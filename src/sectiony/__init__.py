@@ -1,4 +1,7 @@
-from .section import Section, Geometry, Shape
+from .geometry import Geometry, Shape
+from .section import Section
 
-__all__ = ["Section", "Geometry", "Shape"]
+from .stress import Stress
+
+__all__ = ["Section", "Geometry", "Shape", "Stress"]
 

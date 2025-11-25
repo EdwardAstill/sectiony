@@ -9,3 +9,5 @@ def heaviside(x: float) -> float:
 def clip_to_span(x: float, L: float) -> float:
     """Clamp x to [0, L] for safety."""
     return max(0.0, min(L, x))
+
+#need something to handle coordinates, by default it should be (horizontal,vertical for the points) - implement this later
