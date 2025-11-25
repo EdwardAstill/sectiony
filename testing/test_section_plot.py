@@ -60,8 +60,9 @@ class TestSectionPlot(unittest.TestCase):
         fig, ax = plt.subplots()
         sec.plot(ax=ax, show=False)
         
-        # Check aspect ratio is equal
-        self.assertEqual(ax.get_aspect(), 'equal')
+        # Check aspect ratio is equal (matplotlib may return 'equal' or 1.0)
+        aspect = ax.get_aspect()
+        self.assertTrue(aspect == 'equal' or aspect == 1.0)
         
         # Check labels
         self.assertEqual(ax.get_xlabel(), 'z (Horizontal)')

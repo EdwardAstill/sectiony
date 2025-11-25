@@ -1,76 +1,89 @@
 import math
-from ..geometry import Shape, Geometry
+from ..geometry import Shape, Geometry, Contour, Line, Arc
 from ..section import Section
-from .utils import arc
 
-def u_section(b: float, h: float, t: float, r: float, n: int = 4) -> Section:
+
+def u_section(b: float, h: float, t: float, r: float) -> Section:
     """
-    U (Channel) Section
+    U (Channel) Section with native curve geometry.
+    Web at Left (z = -b/2 + t/2 centered), flanges point Right.
     
     Args:
         b: Width (z-direction)
         h: Height (y-direction)
-        t: Thickness
+        t: Thickness (uniform for web and flanges)
         r: Outside corner radius
-        n: Segments
     """
-    # Web at Left (z = -b/2).
-    # Flanges point Right.
+    segments = []
     
-    ri = max(0.0, r - t)
+    # Key coordinates
+    half_h = h / 2
+    half_b = b / 2
     
-    points = []
+    use_outer_fillet = r > 1e-9
+    ri = max(0.0, r - t)  # Inner radius
+    use_inner_fillet = ri > 1e-9
     
-    # Top-Right Tip (Outer)
-    # y = h/2, z = b/2
-    points.append((h/2, b/2))
+    # CCW trace starting from Top-Right outer tip
     
-    # Top-Left Corner (Outer, Convex)
-    # Center: y = h/2 - r, z = -b/2 + r
-    cy = h/2 - r
-    cz = -b/2 + r
-    # Arc 90 (y+) -> 180 (z-)
-    points.extend(arc(cy, cz, r, math.pi/2, math.pi, n))
+    # 1. Top flange outer: Top-Right to near Top-Left corner
+    if use_outer_fillet:
+        segments.append(Line(start=(half_h, half_b), end=(half_h, -half_b + r)))
+        
+        # 2. Top-Left outer corner arc
+        cy = half_h - r
+        cz = -half_b + r
+        segments.append(Arc(center=(cy, cz), radius=r, start_angle=math.pi/2, end_angle=math.pi))
+        
+        # 3. Left web outer edge (going down) 
+        segments.append(Line(start=(half_h - r, -half_b), end=(-half_h + r, -half_b)))
+        
+        # 4. Bottom-Left outer corner arc
+        cy = -half_h + r
+        cz = -half_b + r
+        segments.append(Arc(center=(cy, cz), radius=r, start_angle=math.pi, end_angle=3*math.pi/2))
+        
+        # 5. Bottom flange outer: to Bottom-Right
+        segments.append(Line(start=(-half_h, -half_b + r), end=(-half_h, half_b)))
+    else:
+        # Sharp corners
+        segments.append(Line(start=(half_h, half_b), end=(half_h, -half_b)))
+        segments.append(Line(start=(half_h, -half_b), end=(-half_h, -half_b)))
+        segments.append(Line(start=(-half_h, -half_b), end=(-half_h, half_b)))
     
-    # Bottom-Left Corner (Outer, Convex)
-    # Center: y = -h/2 + r, z = -b/2 + r
-    cy = -h/2 + r
-    cz = -b/2 + r
-    # Arc 180 (z-) -> 270 (y-)
-    points.extend(arc(cy, cz, r, math.pi, 3*math.pi/2, n))
+    # 6. Bottom-Right tip: outer to inner (going up inside the flange)
+    segments.append(Line(start=(-half_h, half_b), end=(-half_h + t, half_b)))
     
-    # Bottom-Right Tip (Outer)
-    # y = -h/2, z = b/2
-    points.append((-h/2, b/2))
+    # Inner profile (going back up)
+    if use_inner_fillet:
+        # 7. Bottom flange inner: to near corner
+        segments.append(Line(start=(-half_h + t, half_b), end=(-half_h + t, -half_b + r)))
+        
+        # 8. Bottom-Left inner corner arc (concave, going CW in local sense)
+        cy = -half_h + r
+        cz = -half_b + r
+        segments.append(Arc(center=(cy, cz), radius=ri, start_angle=3*math.pi/2, end_angle=math.pi))
+        
+        # 9. Left web inner edge (going up)
+        segments.append(Line(start=(-half_h + r, -half_b + t), end=(half_h - r, -half_b + t)))
+        
+        # 10. Top-Left inner corner arc
+        cy = half_h - r
+        cz = -half_b + r
+        segments.append(Arc(center=(cy, cz), radius=ri, start_angle=math.pi, end_angle=math.pi/2))
+        
+        # 11. Top flange inner: from corner to tip
+        segments.append(Line(start=(half_h - t, -half_b + r), end=(half_h - t, half_b)))
+    else:
+        # Sharp inner corners
+        segments.append(Line(start=(-half_h + t, half_b), end=(-half_h + t, -half_b + t)))
+        segments.append(Line(start=(-half_h + t, -half_b + t), end=(half_h - t, -half_b + t)))
+        segments.append(Line(start=(half_h - t, -half_b + t), end=(half_h - t, half_b)))
     
-    # Bottom-Right Tip (Inner)
-    # y = -h/2 + t, z = b/2
-    points.append((-h/2 + t, b/2))
+    # 12. Top-Right tip: inner to outer (closing)
+    segments.append(Line(start=(half_h - t, half_b), end=(half_h, half_b)))
     
-    # Bottom-Left Corner (Inner, Concave)
-    # Center: y = -h/2 + r, z = -b/2 + r (Same as outer center for concentric)
-    # But inner radius ri.
-    cy = -h/2 + r
-    cz = -b/2 + r
-    # Start: Flange Inner Face. y = -h/2 + t.
-    # y = Cy - r + t = Cy - ri. (Theta = 270).
-    # End: Web Inner Face. z = -b/2 + t.
-    # z = Cz - r + t = Cz - ri. (Theta = 180).
-    # 270 -> 180.
-    points.extend(arc(cy, cz, ri, 3*math.pi/2, math.pi, n))
+    contour = Contour(segments=segments, hollow=False)
+    geom = Geometry(contours=[contour])
     
-    # Top-Left Corner (Inner, Concave)
-    # Center: y = h/2 - r, z = -b/2 + r
-    cy = h/2 - r
-    cz = -b/2 + r
-    # Start: Web Inner. Theta = 180.
-    # End: Flange Inner. y = h/2 - t = Cy + r - t = Cy + ri. Theta = 90.
-    # 180 -> 90.
-    points.extend(arc(cy, cz, ri, math.pi, math.pi/2, n))
-    
-    # Top-Right Tip (Inner)
-    # y = h/2 - t, z = b/2
-    points.append((h/2 - t, b/2))
-    
-    geom = Geometry(shapes=[Shape(points=points, hollow=False)])
     return Section(name=f"U {b}x{h}x{t}", geometry=geom)
