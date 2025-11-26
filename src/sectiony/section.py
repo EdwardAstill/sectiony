@@ -26,6 +26,8 @@ class Section:
     z_max: Optional[float] = None
     Zpl_y: Optional[float] = None
     Zpl_z: Optional[float] = None
+    SCy: Optional[float] = None  # Shear center y-coordinate
+    SCz: Optional[float] = None  # Shear center z-coordinate
     geometry: Optional[Geometry] = None
 
     def plot(self, ax=None, show=True):
@@ -64,3 +66,5 @@ class Section:
         self.z_max = props.z_max
         self.Zpl_y = props.Zpl_y
         self.Zpl_z = props.Zpl_z
+        self.SCy = props.SCy
+        self.SCz = props.SCz

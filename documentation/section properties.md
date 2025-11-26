@@ -33,3 +33,18 @@
 | **rz** | Radius of Gyration (z) | $\sqrt{I_z / A}$. Used for column buckling analysis about the z-axis. |
 | **Zpl_y** | Plastic Modulus (y) | First moment of area about the plastic neutral axis (vertical). Used for plastic moment capacity. |
 | **Zpl_z** | Plastic Modulus (z) | First moment of area about the plastic neutral axis (horizontal). Used for plastic moment capacity. |
+
+## Shear Center
+
+| Symbol | Property | Description |
+| :--- | :--- | :--- |
+| **SCy** | Shear Center (y) | Vertical coordinate of the shear center. |
+| **SCz** | Shear Center (z) | Horizontal coordinate of the shear center. |
+
+The **shear center** is the point through which transverse loads must act to produce bending without torsion. It's calculated using the sectorial coordinate method:
+
+- **Doubly symmetric sections** (I-beams with equal flanges, rectangles, circles): The shear center coincides with the centroid ($SC_y = C_y$, $SC_z = C_z$).
+- **Singly symmetric sections** (channels, T-sections): The shear center lies on the axis of symmetry but is offset from the centroid.
+- **Asymmetric sections**: The shear center is offset from the centroid in both directions.
+
+For open thin-walled sections (like channels), the shear center can be significantly offset from the centroid. Loads not applied through the shear center will induce torsion in addition to bending.
