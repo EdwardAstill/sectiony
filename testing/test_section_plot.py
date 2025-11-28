@@ -10,7 +10,7 @@ src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from sectiony.library import chs, rhs, i_section, u_section
+from sectiony.library import chs, rhs, i, u
 from sectiony.geometry import Geometry, Shape
 from sectiony.section import Section
 
@@ -42,8 +42,8 @@ class TestSectionPlot(unittest.TestCase):
         sections = [
             chs(d=20, t=1),
             rhs(b=10, h=20, t=1, r=1),
-            i_section(d=20, b=10, tf=1, tw=1, r=0),
-            u_section(b=10, h=20, t=1, r=0)
+            i(d=20, b=10, tf=1, tw=1, r=0),
+            u(b=10, h=20, t=1, r=0)
         ]
         
         for sec in sections:

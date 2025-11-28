@@ -3,7 +3,7 @@ from ..geometry import Shape, Geometry, Contour, Line, Arc
 from ..section import Section
 
 
-def u_section(b: float, h: float, t: float, r: float) -> Section:
+def u(b: float, h: float, t: float, r: float) -> Section:
     """
     U (Channel) Section with native curve geometry.
     Web at Left (z = -b/2 + t/2 centered), flanges point Right.
@@ -87,3 +87,4 @@ def u_section(b: float, h: float, t: float, r: float) -> Section:
     geom = Geometry(contours=[contour])
     
     return Section(name=f"U {b}x{h}x{t}", geometry=geom)
+

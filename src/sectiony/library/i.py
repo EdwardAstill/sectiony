@@ -3,7 +3,7 @@ from ..geometry import Shape, Geometry, Contour, Line, Arc
 from ..section import Section
 
 
-def i_section(d: float, b: float, tf: float, tw: float, r: float) -> Section:
+def i(d: float, b: float, tf: float, tw: float, r: float) -> Section:
     """
     I Section with native curve geometry.
     
@@ -111,3 +111,4 @@ def i_section(d: float, b: float, tf: float, tw: float, r: float) -> Section:
     geom = Geometry(contours=[contour])
     
     return Section(name=f"I {d}x{b}", geometry=geom)
+

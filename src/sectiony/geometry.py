@@ -1,7 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict, Any
 import math
+import json
 
 # Type alias for points
 Point = Tuple[float, float]
@@ -19,6 +20,20 @@ class Line:
 
     def end_point(self) -> Point:
         return self.end
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "line",
+            "start": self.start,
+            "end": self.end
+        }
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'Line':
+        return Line(
+            start=tuple(data["start"]),
+            end=tuple(data["end"])
+        )
 
 
 @dataclass
@@ -55,6 +70,24 @@ class Arc:
         y = cy + self.radius * math.sin(self.end_angle)
         z = cz + self.radius * math.cos(self.end_angle)
         return (y, z)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "arc",
+            "center": self.center,
+            "radius": self.radius,
+            "start_angle": self.start_angle,
+            "end_angle": self.end_angle
+        }
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'Arc':
+        return Arc(
+            center=tuple(data["center"]),
+            radius=data["radius"],
+            start_angle=data["start_angle"],
+            end_angle=data["end_angle"]
+        )
 
     def to_beziers(self) -> List['CubicBezier']:
         """
@@ -152,6 +185,24 @@ class CubicBezier:
     def end_point(self) -> Point:
         return self.p3
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "bezier",
+            "p0": self.p0,
+            "p1": self.p1,
+            "p2": self.p2,
+            "p3": self.p3
+        }
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'CubicBezier':
+        return CubicBezier(
+            p0=tuple(data["p0"]),
+            p1=tuple(data["p1"]),
+            p2=tuple(data["p2"]),
+            p3=tuple(data["p3"])
+        )
+
 
 # Union type for all segment types
 Segment = Union[Line, Arc, CubicBezier]
@@ -188,6 +239,28 @@ class Contour:
 
     def _points_equal(self, p1: Point, p2: Point, tol: float = 1e-9) -> bool:
         return abs(p1[0] - p2[0]) < tol and abs(p1[1] - p2[1]) < tol
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "segments": [s.to_dict() for s in self.segments],
+            "hollow": self.hollow
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Contour':
+        segments = []
+        for seg_data in data["segments"]:
+            type_ = seg_data.get("type")
+            if type_ == "line":
+                segments.append(Line.from_dict(seg_data))
+            elif type_ == "arc":
+                segments.append(Arc.from_dict(seg_data))
+            elif type_ == "bezier":
+                segments.append(CubicBezier.from_dict(seg_data))
+            else:
+                raise ValueError(f"Unknown segment type: {type_}")
+        
+        return cls(segments=segments, hollow=data.get("hollow", False))
 
 
 # Legacy Shape class - now wraps a Contour for backward compatibility during transition
@@ -256,6 +329,30 @@ class Geometry:
         calculate_grid_properties(props, reduced_shapes)
         
         return props
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert geometry to dictionary."""
+        return {
+            "contours": [c.to_dict() for c in self.contours]
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Geometry':
+        """Create geometry from dictionary."""
+        contours = [Contour.from_dict(c) for c in data["contours"]]
+        return cls(contours=contours)
+
+    def to_json(self, file_path: str):
+        """Save geometry to a JSON file."""
+        with open(file_path, 'w') as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    @classmethod
+    def from_json(cls, file_path: str) -> 'Geometry':
+        """Load geometry from a JSON file."""
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return cls.from_dict(data)
 
 
 # -----------------------------------------------------------------------------

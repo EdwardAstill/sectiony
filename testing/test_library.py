@@ -12,7 +12,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 try:
-    from sectiony.library import chs, rhs, i_section, u_section
+    from sectiony.library import chs, rhs, i, u
 except ImportError:
     pass
 
@@ -111,13 +111,13 @@ class TestLibrary(unittest.TestCase):
         # Tolerance for discretized rounded corners
         self.assertAlmostEqual(sec.A, expected_A, delta=expected_A * 0.01)  # 1% tolerance
 
-    def test_i_section(self):
+    def test_i(self):
         d = 100.0 # Height (y)
         b = 50.0  # Width (z)
         tf = 10.0
         tw = 5.0
         r = 0.0
-        sec = i_section(d, b, tf, tw, r)
+        sec = i(d, b, tf, tw, r)
         
         expected_A = 2 * (b * tf) + (d - 2*tf) * tw
         
@@ -138,12 +138,12 @@ class TestLibrary(unittest.TestCase):
         # J check - loose tolerance as open section J is tricky
         self.assertAlmostEqual(sec.J, expected_J, delta=expected_J * 0.25)
 
-    def test_u_section(self):
+    def test_u(self):
         b = 50.0 # Total width (z)
         h = 100.0 # Total height (y)
         t = 5.0
         r = 0.0
-        sec = u_section(b, h, t, r)
+        sec = u(b, h, t, r)
         
         # Area = bh - (b-t)(h-2t)
         expected_A = b*h - (b-t)*(h-2*t)
