@@ -69,14 +69,20 @@ stress.plot(
 ## Usage Example
 
 ```python
-from sectiony.geometry import Geometry, Shape
+from sectiony.geometry import Geometry, Contour, Line
 from sectiony.section import Section
 
 # 1. Define Section
 points = [(10, 5), (10, -5), (-10, -5), (-10, 5)]
+contour = Contour(segments=[
+    Line(start=(10, 5), end=(10, -5)),
+    Line(start=(10, -5), end=(-10, -5)),
+    Line(start=(-10, -5), end=(-10, 5)),
+    Line(start=(-10, 5), end=(10, 5))
+])
 section = Section(
     name="Rect 20x10",
-    geometry=Geometry(shapes=[Shape(points=points)])
+    geometry=Geometry(contours=[contour])
 )
 
 # 2. Create stress state (compression + bending)

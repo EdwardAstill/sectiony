@@ -4,46 +4,43 @@ Welcome to **sectiony**, a Python library for cross-section analysis and stress 
 
 ## 1. Defining a Section
 
-A `Section` is built from `Geometry`, which is a collection of `Shape` objects. Shapes are defined by a list of $(y, z)$ coordinates (where $y$ is vertical and $z$ is horizontal).
+A `Section` is built from `Geometry`. A `Geometry` is a collection of `Contour` objects, which define the boundary of the shape. Contours are made of segments like `Line` and `Arc`.
 
-### Creating Shapes
+### Creating a Custom Geometry
 
 You can create solid shapes and hollow shapes (holes).
 
 ```python
-from sectiony import Section, Geometry, Shape
+from sectiony import Section, Geometry, Contour, Line
 
 # Define a solid rectangle (10 wide, 20 high)
-points_outer = [
-    (10.0, 5.0),   # Top Right (y, z)
-    (-10.0, 5.0),  # Bottom Right
-    (-10.0, -5.0), # Bottom Left
-    (10.0, -5.0)   # Top Left
+# Define segments for the outer boundary
+outer_segments = [
+    Line(start=(10, 5), end=(10, -5)),   # Top edge
+    Line(start=(10, -5), end=(-10, -5)), # Left edge
+    Line(start=(-10, -5), end=(-10, 5)), # Bottom edge
+    Line(start=(-10, 5), end=(10, 5))    # Right edge
 ]
-solid = Shape(points=points_outer)
+solid_contour = Contour(segments=outer_segments, hollow=False)
 
-# Define a hole
-points_inner = [
-    (5.0, 2.5),
-    (-5.0, 2.5),
-    (-5.0, -2.5),
-    (5.0, -2.5)
+# Define a hole (smaller rectangle)
+inner_segments = [
+    Line(start=(5, 2.5), end=(5, -2.5)),
+    Line(start=(5, -2.5), end=(-5, -2.5)),
+    Line(start=(-5, -2.5), end=(-5, 2.5)),
+    Line(start=(-5, 2.5), end=(5, 2.5))
 ]
-hole = Shape(points=points_inner, hollow=True)
-```
+hole_contour = Contour(segments=inner_segments, hollow=True)
 
-### creating the Section
-
-Combine shapes into a `Geometry` object and then create the `Section`.
-
-```python
-# Create geometry with both shapes
-geom = Geometry(shapes=[solid, hole])
+# Create geometry with both contours
+geom = Geometry(contours=[solid_contour, hole_contour])
 
 # Create the section
 # Properties (Area, Inertia, etc.) are calculated automatically
 my_section = Section(name="Hollow Rect", geometry=geom)
 ```
+
+**Note:** For simple polygons, you can also use the legacy `Shape` class with a list of points, but `Contour` is preferred as it supports curves.
 
 ## 2. Accessing Section Properties
 
@@ -59,7 +56,7 @@ print(f"Centroidal Axis Distances: y_max={my_section.y_max}, z_max={my_section.z
 *   **A**: Area
 *   **Iy**: Second moment of area about the vertical axis (resistance to bending in the horizontal plane).
 *   **Iz**: Second moment of area about the horizontal axis (resistance to bending in the vertical plane).
-*   **J**: Polar moment of area (approximation for non-circular sections).
+*   **J**: Polar moment of area.
 
 ## 3. Visualizing the Section
 
@@ -118,3 +115,16 @@ stress.plot("von_mises")
 
 The plots automatically handle holes and complex geometries, masking the stress values outside the material.
 
+## 5. Saving and Loading (JSON)
+
+You can save your section geometry to a file for later use.
+
+```python
+# Save to JSON
+my_section.geometry.to_json("my_section.json")
+
+# Load from JSON
+from sectiony import Geometry
+loaded_geom = Geometry.from_json("my_section.json")
+loaded_section = Section(name="Loaded Section", geometry=loaded_geom)
+```

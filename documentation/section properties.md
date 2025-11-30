@@ -2,7 +2,7 @@
 
 **sectiony** calculates a comprehensive set of geometric and mechanical properties for any cross-section. These properties are calculated using a hybrid approach:
 - **Exact Integration (Green's Theorem)**: For Area, Centroids, and Moments of Inertia ($I_y, I_z, I_{yz}$).
-- **Grid Discretization (Finite Difference)**: For complex torsion ($J$) and plastic properties ($Z_{pl}$).
+- **Grid Discretization (Finite Difference)**: For complex torsion ($J$), plastic properties ($Z_{pl}$), and Shear Center.
 
 ## Geometric Properties
 
@@ -41,7 +41,7 @@
 | **SCy** | Shear Center (y) | Vertical coordinate of the shear center. |
 | **SCz** | Shear Center (z) | Horizontal coordinate of the shear center. |
 
-The **shear center** is the point through which transverse loads must act to produce bending without torsion. It's calculated using the sectorial coordinate method:
+The **shear center** is the point through which transverse loads must act to produce bending without torsion. It's calculated using numerical methods on the discretized grid:
 
 - **Doubly symmetric sections** (I-beams with equal flanges, rectangles, circles): The shear center coincides with the centroid ($SC_y = C_y$, $SC_z = C_z$).
 - **Singly symmetric sections** (channels, T-sections): The shear center lies on the axis of symmetry but is offset from the centroid.

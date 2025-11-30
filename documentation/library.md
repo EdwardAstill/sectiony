@@ -1,28 +1,36 @@
-sections and their parameters
+# Standard Library Shapes
 
-CHS
-- D - outer diameter
-- t - wall thickness
-- n - number of segments/points
+The `sectiony.library` module provides functions to easily generate common structural sections.
 
-RHS
-- b - width
-- h - height
-- t - wall thickness
-- r - radius of the corners (outside radius)
-- n - number of segments/points (for the outside radius)
+## Circular Hollow Section (chs)
+`chs(d, t)`
 
-I
-- d - depth/height
-- b - width/base
-- tf - flange thickness
-- tw - web thickness
-- r - radius of the corners (outside radius)
-- n - number of segments/points (for the outside radius)
+*   **d**: Outer diameter
+*   **t**: Wall thickness
 
-U
-- b - width/base
-- h - height
-- t - wall thickness
-- r - radius of the corners (outside radius)
-- n - number of segments/points (for the outside radius)
+## Rectangular Hollow Section (rhs)
+`rhs(b, h, t, r)`
+
+*   **b**: Width (z-direction)
+*   **h**: Height (y-direction)
+*   **t**: Wall thickness
+*   **r**: Outer corner radius
+
+## I Section (i)
+`i(d, b, tf, tw, r)`
+
+*   **d**: Depth (Height, y-direction)
+*   **b**: Width (Base, z-direction)
+*   **tf**: Flange thickness
+*   **tw**: Web thickness
+*   **r**: Root radius (fillet between web and flange)
+
+## U (Channel) Section (u)
+`u(b, h, t, r)`
+
+*   **b**: Width (z-direction)
+*   **h**: Height (y-direction)
+*   **t**: Thickness (uniform for web and flanges)
+*   **r**: Outside corner radius
+
+*Note: The `n` parameter (number of segments) mentioned in older documentation is no longer required as the library now uses native curve representations (`Arc`) which are discretized automatically based on resolution.*
