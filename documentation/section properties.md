@@ -48,3 +48,54 @@ The **shear center** is the point through which transverse loads must act to pro
 - **Asymmetric sections**: The shear center is offset from the centroid in both directions.
 
 For open thin-walled sections (like channels), the shear center can be significantly offset from the centroid. Loads not applied through the shear center will induce torsion in addition to bending.
+
+## Example: Calculating Properties for a Pentagon
+
+Here is a complete example of creating a pentagonal section and inspecting its calculated properties.
+
+```python
+import math
+from sectiony import Section, Geometry, Contour, Line
+
+# Define a regular pentagon
+radius = 10.0
+segments = []
+points = []
+
+# Generate points for a pentagon
+for i in range(5):
+    angle = 2 * math.pi * i / 5  # 72 degrees steps
+    # y is vertical (sin), z is horizontal (cos)
+    # Using +y as up (pi/2 is top)
+    theta = angle + math.pi/2 
+    y = radius * math.sin(theta)
+    z = radius * math.cos(theta)
+    points.append((y, z))
+
+# Create line segments connecting the points
+for i in range(5):
+    start = points[i]
+    end = points[(i + 1) % 5]
+    segments.append(Line(start=start, end=end))
+
+# Create section
+contour = Contour(segments=segments, hollow=False)
+geom = Geometry(contours=[contour])
+pentagon = Section(name="Pentagon", geometry=geom)
+
+# Access calculated properties
+print(f"--- Section Properties for Pentagon (R={radius}) ---")
+print(f"Area (A): {pentagon.A:.4f}")
+print(f"Centroid (Cy, Cz): ({pentagon.Cy:.4f}, {pentagon.Cz:.4f})")
+print(f"Moment of Inertia (Iy): {pentagon.Iy:.4f}")
+print(f"Moment of Inertia (Iz): {pentagon.Iz:.4f}")
+print(f"Torsional Constant (J): {pentagon.J:.4f}")
+print(f"Plastic Modulus z (Zpl_z): {pentagon.Zpl_z:.4f}")
+```
+
+### Explanation of Calculations
+
+1.  **Exact Area & Inertia**: When `pentagon` is initialized, `geometry.calculate_properties()` is called. It iterates through the segments, discretizes them into points, and uses Green's Theorem (polygon area formulas) to compute `A`, `Cy`, `Cz`, `Iy`, `Iz`, and `Iyz` exactly.
+2.  **Grid Properties**: For `J` and `Zpl`, the code automatically creates a 2D grid (mask) over the shape's bounding box.
+    *   **Plastic Modulus ($Z_{pl}$)**: It finds the plastic neutral axis (PNA) that bisects the area on the grid and sums the first moments of area about that axis.
+    *   **Torsion ($J$)**: It solves the Poisson partial differential equation ($\nabla^2 \phi = -2$) on the grid to find the Prandtl stress function $\phi$, and integrates it to find $J$.

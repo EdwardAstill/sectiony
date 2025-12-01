@@ -97,3 +97,30 @@ beam.geometry.to_json("my_beam.json")
 # Load geometry
 loaded_geom = Geometry.from_json("my_beam.json")
 ```
+
+## Section Properties
+
+Sectiony automatically calculates a comprehensive set of properties for any geometry.
+
+| Symbol | Property | Description |
+| :--- | :--- | :--- |
+| **A** | Area | Total cross-sectional area. |
+| **Cy**, **Cz** | Centroids | Geometric center of the section. |
+| **Iy**, **Iz** | Moments of Inertia | Resistance to bending about y and z axes. |
+| **Iyz** | Product of Inertia | Measure of asymmetry. |
+| **J** | Torsional Constant | Resistance to twisting. |
+| **Sy**, **Sz** | Elastic Moduli | Used for elastic stress calculation ($I/c$). |
+| **Zpl_y**, **Zpl_z** | Plastic Moduli | Used for plastic moment capacity. |
+| **ry**, **rz** | Radii of Gyration | Used for buckling analysis ($\sqrt{I/A}$). |
+| **SCy**, **SCz** | Shear Center | Point where transverse loads induce no torsion. |
+
+### Accessing Properties
+
+Properties are available as attributes on the `Section` object:
+
+```python
+# Print properties
+print(f"Area: {beam.A:.2f}")
+print(f"Iyy: {beam.Iy:.2f}")
+print(f"J: {beam.J:.2f}")
+```
