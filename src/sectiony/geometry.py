@@ -408,8 +408,8 @@ class Geometry:
     @classmethod
     def from_dxf(cls, file_path: str) -> 'Geometry':
         """Load geometry from a DXF file."""
-        from .dxf_utils import read_dxf
-        contours = read_dxf(file_path)
+        from .dxf_utils import read_dxf_robust
+        contours = read_dxf_robust(file_path)
         return cls(contours=contours)
 
     def to_dxf(self, file_path: str) -> None:

@@ -222,74 +222,7 @@ geom = Geometry(contours=[contour])
 triangle_section = Section(name="Triangle", geometry=geom)
 ```
 
-### Serialization / Import / Export
+## 3. Importing and Exporting
 
-Geometries can be saved to and loaded from JSON or DXF files.
+You can save your sections to JSON or import geometry from DXF files. See the [Import and Export](import_export.md) documentation for full details on file formats and CAD integration.
 
-#### JSON Support
-
-The JSON format preserves exact curve definitions (not just discretized points):
-
-```python
-# Save geometry
-geom.to_json("my_section.json")
-
-# Load geometry
-loaded_geom = Geometry.from_json("my_section.json")
-
-# The JSON includes a schema version for forward compatibility
-# Version 1: Supports Line, Arc, and CubicBezier segments
-```
-
-**JSON Structure:**
-
-```json
-{
-  "version": 1,
-  "contours": [
-    {
-      "segments": [
-        {
-          "type": "line",
-          "start": [0, 0],
-          "end": [10, 0]
-        },
-        {
-          "type": "arc",
-          "center": [5, 0],
-          "radius": 5.0,
-          "start_angle": 0,
-          "end_angle": 3.14159
-        }
-      ],
-      "hollow": false
-    }
-  ]
-}
-```
-
-#### DXF Support
-
-You can import and export geometry from DXF files. This uses a built-in minimal parser (no external dependencies).
-
-**Supported Entities:**
-- `LINE`
-- `ARC`
-- `LWPOLYLINE` (Imported as linear segments)
-
-**Coordinate System Mapping:**
-- DXF X-axis maps to Section Y-axis
-- DXF Y-axis maps to Section Z-axis
-
-```python
-# Import from DXF
-geom = Geometry.from_dxf("drawing.dxf")
-
-# Export to DXF
-geom.to_dxf("output.dxf")
-```
-
-**Note:** The DXF importer performs a raw import of entities. Each entity becomes a separate contour unless it is a Polyline. 
-- A `LWPOLYLINE` in DXF becomes a single connected `Contour`.
-- Individual `LINE` and `ARC` entities become separate `Contour`s. 
-- To create a closed section from individual lines, you may need to manually process the contours or draw them as a closed Polyline in your CAD software.
