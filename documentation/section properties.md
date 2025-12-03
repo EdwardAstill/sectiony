@@ -59,7 +59,6 @@ from sectiony import Section, Geometry, Contour, Line
 
 # Define a regular pentagon
 radius = 10.0
-segments = []
 points = []
 
 # Generate points for a pentagon
@@ -72,14 +71,8 @@ for i in range(5):
     z = radius * math.cos(theta)
     points.append((y, z))
 
-# Create line segments connecting the points
-for i in range(5):
-    start = points[i]
-    end = points[(i + 1) % 5]
-    segments.append(Line(start=start, end=end))
-
-# Create section
-contour = Contour(segments=segments, hollow=False)
+# Create section using Contour.from_points() convenience method
+contour = Contour.from_points(points, hollow=False)
 geom = Geometry(contours=[contour])
 pentagon = Section(name="Pentagon", geometry=geom)
 
@@ -96,6 +89,7 @@ print(f"Plastic Modulus z (Zpl_z): {pentagon.Zpl_z:.4f}")
 ### Explanation of Calculations
 
 1.  **Exact Area & Inertia**: When `pentagon` is initialized, `geometry.calculate_properties()` is called. It iterates through the segments, discretizes them into points, and uses Green's Theorem (polygon area formulas) to compute `A`, `Cy`, `Cz`, `Iy`, `Iz`, and `Iyz` exactly.
-2.  **Grid Properties**: For `J` and `Zpl`, the code automatically creates a 2D grid (mask) over the shape's bounding box.
+2.  **Hole Handling**: For sections with holes (`hollow=True` contours), holes are automatically clipped to only subtract from regions where they intersect with solid material. This ensures property calculations are physically meaningful.
+3.  **Grid Properties**: For `J` and `Zpl`, the code automatically creates a 2D grid (mask) over the shape's bounding box.
     *   **Plastic Modulus ($Z_{pl}$)**: It finds the plastic neutral axis (PNA) that bisects the area on the grid and sums the first moments of area about that axis.
     *   **Torsion ($J$)**: It solves the Poisson partial differential equation ($\nabla^2 \phi = -2$) on the grid to find the Prandtl stress function $\phi$, and integrates it to find $J$.

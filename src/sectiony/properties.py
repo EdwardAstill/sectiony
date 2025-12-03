@@ -1,8 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Tuple, Any, Optional
+from typing import List, Tuple
 import numpy as np
 import math
+
+# Type alias for points
+Point = Tuple[float, float]
+
 
 @dataclass
 class SectionProperties:
@@ -27,25 +31,31 @@ class SectionProperties:
     SCy: float = 0.0  # Shear center y-coordinate
     SCz: float = 0.0  # Shear center z-coordinate
 
-def calculate_exact_properties(shapes: List[Any]) -> SectionProperties:
+
+def calculate_exact_properties(contours: List[Tuple[List[Point], bool]]) -> SectionProperties:
     """
     Calculate exact geometric properties (Area, Centroids, Inertia) using Green's Theorem.
+    
+    Args:
+        contours: List of (points, hollow) tuples
+        
+    Returns:
+        SectionProperties with exact values calculated
     """
     A_total = 0.0
-    Qz_total = 0.0 # Integral y dA
-    Qy_total = 0.0 # Integral z dA
-    Izz_total = 0.0 # Integral y^2 dA
-    Iyy_total = 0.0 # Integral z^2 dA
-    Iyz_total = 0.0 # Integral yz dA
+    Qz_total = 0.0  # Integral y dA
+    Qy_total = 0.0  # Integral z dA
+    Izz_total = 0.0  # Integral y^2 dA
+    Iyy_total = 0.0  # Integral z^2 dA
+    Iyz_total = 0.0  # Integral yz dA
     
-    valid_shapes = False
+    valid_contours = False
 
-    for shape in shapes:
-        pts = shape.points
+    for pts, hollow in contours:
         if not pts or len(pts) < 3:
             continue
         
-        valid_shapes = True
+        valid_contours = True
         
         # Ensure closed polygon
         pts_closed = list(pts)
@@ -88,7 +98,7 @@ def calculate_exact_properties(shapes: List[Any]) -> SectionProperties:
             Iyy_poly = -Iyy_poly
             Iyz_poly = -Iyz_poly
             
-        sign = -1.0 if shape.hollow else 1.0
+        sign = -1.0 if hollow else 1.0
         
         A_total += sign * A_poly
         Qz_total += sign * Qz_poly
@@ -97,7 +107,7 @@ def calculate_exact_properties(shapes: List[Any]) -> SectionProperties:
         Iyy_total += sign * Iyy_poly
         Iyz_total += sign * Iyz_poly
 
-    if not valid_shapes or abs(A_total) < 1e-9:
+    if not valid_contours or abs(A_total) < 1e-9:
         return SectionProperties()
 
     # Centroid
@@ -117,13 +127,15 @@ def calculate_exact_properties(shapes: List[Any]) -> SectionProperties:
     y_max = 0.0
     z_max = 0.0
     
-    for shape in shapes:
-        # Check all points, even for hollow shapes, to find bounds
-        for yi, zi in shape.points:
+    for pts, _ in contours:
+        # Check all points, even for hollow contours, to find bounds
+        for yi, zi in pts:
             dy = abs(yi - Cy)
             dz = abs(zi - Cz)
-            if dy > y_max: y_max = dy
-            if dz > z_max: z_max = dz
+            if dy > y_max:
+                y_max = dy
+            if dz > z_max:
+                z_max = dz
             
     # Section Moduli
     Sy = Iy_c / z_max if z_max > 1e-9 else 0.0
@@ -136,16 +148,26 @@ def calculate_exact_properties(shapes: List[Any]) -> SectionProperties:
         y_max=y_max, z_max=z_max
     )
 
-def calculate_grid_properties(props: SectionProperties, shapes: List[Any], resolution: int = 100):
+
+def calculate_grid_properties(
+    props: SectionProperties, 
+    contours: List[Tuple[List[Point], bool]], 
+    resolution: int = 100
+) -> None:
     """
     Calculate properties requiring grid discretization (J, Zpl, Shear Center).
     Updates the passed SectionProperties object.
+    
+    Args:
+        props: SectionProperties object to update
+        contours: List of (points, hollow) tuples
+        resolution: Grid resolution
     """
     from matplotlib.path import Path
 
-    all_points = []
-    for s in shapes:
-        all_points.extend(s.points)
+    all_points: List[Point] = []
+    for pts, _ in contours:
+        all_points.extend(pts)
     
     if not all_points:
         return
@@ -160,7 +182,8 @@ def calculate_grid_properties(props: SectionProperties, shapes: List[Any], resol
     
     # Add padding
     padding = max(height, width) * 0.1
-    if padding == 0: padding = 1.0
+    if padding == 0:
+        padding = 1.0
     
     # Grid limits
     y0 = y_min - padding
@@ -182,15 +205,17 @@ def calculate_grid_properties(props: SectionProperties, shapes: List[Any], resol
     
     # Create mask using matplotlib Path
     is_solid = np.zeros(len(pts_flat), dtype=bool)
-    for s in shapes:
-        if s.hollow or len(s.points) < 3: continue
-        path = Path(s.points)
+    for pts, hollow in contours:
+        if hollow or len(pts) < 3:
+            continue
+        path = Path(pts)
         is_solid |= path.contains_points(pts_flat)
         
     is_hole = np.zeros(len(pts_flat), dtype=bool)
-    for s in shapes:
-        if not s.hollow or len(s.points) < 3: continue
-        path = Path(s.points)
+    for pts, hollow in contours:
+        if not hollow or len(pts) < 3:
+            continue
+        path = Path(pts)
         is_hole |= path.contains_points(pts_flat)
         
     final_mask_flat = is_solid & (~is_hole)
@@ -231,10 +256,13 @@ def calculate_grid_properties(props: SectionProperties, shapes: List[Any], resol
     props.Zpl_y = np.sum(np.abs(z_coords - pna_z)) * dA
     
     # --- Shear Center ---
-    _calculate_shear_center(props, shapes)
+    _calculate_shear_center(props, contours)
 
 
-def _calculate_shear_center(props: SectionProperties, shapes: List[Any]):
+def _calculate_shear_center(
+    props: SectionProperties, 
+    contours: List[Tuple[List[Point], bool]]
+) -> None:
     """
     Calculate shear center using numerical methods.
     
@@ -252,10 +280,10 @@ def _calculate_shear_center(props: SectionProperties, shapes: List[Any]):
     A = props.A
     
     # Collect all boundary points for symmetry analysis
-    all_points = []
-    for shape in shapes:
-        if not shape.hollow and len(shape.points) >= 3:
-            all_points.extend(shape.points)
+    all_points: List[Point] = []
+    for pts, hollow in contours:
+        if not hollow and len(pts) >= 3:
+            all_points.extend(pts)
     
     if not all_points:
         props.SCy = Cy
@@ -336,9 +364,11 @@ def _calculate_shear_center(props: SectionProperties, shapes: List[Any]):
     props.SCz = Cz + e_z
 
 
-def _compute_shear_center_offsets(points: List[Tuple[float, float]], 
-                                   Cy: float, Cz: float,
-                                   Iy: float, Iz: float, Iyz: float) -> Tuple[float, float]:
+def _compute_shear_center_offsets(
+    points: List[Point], 
+    Cy: float, Cz: float,
+    Iy: float, Iz: float, Iyz: float
+) -> Tuple[float, float]:
     """
     Compute shear center offsets using sectorial coordinate method.
     Returns (e_y, e_z) offsets from centroid.
@@ -349,7 +379,7 @@ def _compute_shear_center_offsets(points: List[Tuple[float, float]],
     
     # Compute sectorial coordinates and segment lengths
     omega = [0.0] * n
-    ds_list = []
+    ds_list: List[float] = []
     
     for i in range(n):
         j = (i + 1) % n
@@ -403,17 +433,21 @@ def _compute_shear_center_offsets(points: List[Tuple[float, float]],
     return e_y, e_z
 
 
-def _compute_shear_center_offset_y(points: List[Tuple[float, float]],
-                                    Cy: float, Cz: float,
-                                    Iy: float, Iz: float, Iyz: float) -> float:
+def _compute_shear_center_offset_y(
+    points: List[Point],
+    Cy: float, Cz: float,
+    Iy: float, Iz: float, Iyz: float
+) -> float:
     """Compute y-offset of shear center for section symmetric about y-axis."""
     e_y, _ = _compute_shear_center_offsets(points, Cy, Cz, Iy, Iz, Iyz)
     return e_y
 
 
-def _compute_shear_center_offset_z(points: List[Tuple[float, float]],
-                                    Cy: float, Cz: float,  
-                                    Iy: float, Iz: float, Iyz: float) -> float:
+def _compute_shear_center_offset_z(
+    points: List[Point],
+    Cy: float, Cz: float,  
+    Iy: float, Iz: float, Iyz: float
+) -> float:
     """Compute z-offset of shear center for section symmetric about z-axis."""
     _, e_z = _compute_shear_center_offsets(points, Cy, Cz, Iy, Iz, Iyz)
     return e_z

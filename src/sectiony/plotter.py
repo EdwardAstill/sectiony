@@ -1,27 +1,38 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, Optional, List, Tuple
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
-import numpy as np
+import math
 
 if TYPE_CHECKING:
     from .section import Section
-    from .geometry import Contour, Segment, Line, Arc, CubicBezier
+    from .geometry import Contour, Line, Arc, CubicBezier
+
+# Type alias for points
+Point = Tuple[float, float]
 
 
-def _contour_to_path(contour: 'Contour') -> Path:
+def contour_to_path(contour: 'Contour') -> Optional[Path]:
     """
     Convert a Contour to a matplotlib Path with native curve commands.
     Uses CURVE4 for beziers and arcs (converted to beziers).
+    
+    This is a shared utility used by both plotter and stress modules.
+    
+    Args:
+        contour: The Contour to convert
+        
+    Returns:
+        A matplotlib Path, or None if contour has no segments
     """
     from .geometry import Line, Arc, CubicBezier
     
     if not contour.segments:
         return None
     
-    vertices = []
-    codes = []
+    vertices: List[tuple[float, float]] = []
+    codes: List[int] = []
     
     # Start with MOVETO to first point
     first_segment = contour.segments[0]
@@ -29,7 +40,6 @@ def _contour_to_path(contour: 'Contour') -> Path:
         start_point = first_segment.start
     elif isinstance(first_segment, Arc):
         cy, cz = first_segment.center
-        import math
         y = cy + first_segment.radius * math.sin(first_segment.start_angle)
         z = cz + first_segment.radius * math.cos(first_segment.start_angle)
         start_point = (y, z)
@@ -76,29 +86,71 @@ def _contour_to_path(contour: 'Contour') -> Path:
     return Path(vertices, codes)
 
 
-def _shape_to_path(shape) -> Path:
+def points_to_path(points: List[Point]) -> Optional[Path]:
     """
-    Convert a Shape to a matplotlib Path.
-    Uses native curves if contour available, otherwise falls back to polygon.
-    """
-    # Try to use contour for native curves
-    if hasattr(shape, '_contour') and shape._contour and shape._contour.segments:
-        return _contour_to_path(shape._contour)
+    Convert a list of points to a matplotlib Path (polygon).
     
-    # Fallback: use points as polygon
-    if not shape.points or len(shape.points) < 3:
+    Args:
+        points: List of (y, z) points
+        
+    Returns:
+        A matplotlib Path, or None if fewer than 3 points
+    """
+    if not points or len(points) < 3:
         return None
     
-    vertices = [(p[1], p[0]) for p in shape.points]  # Convert (y,z) to (z,y)
+    # Convert (y, z) to plot coords (z, y)
+    vertices = [(p[1], p[0]) for p in points]
     vertices.append(vertices[0])  # Close
-    codes = [Path.MOVETO] + [Path.LINETO] * (len(shape.points) - 1) + [Path.CLOSEPOLY]
+    codes = [Path.MOVETO] + [Path.LINETO] * (len(points) - 1) + [Path.CLOSEPOLY]
     
     return Path(vertices, codes)
 
 
-def plot_section(section: 'Section', ax: Optional[plt.Axes] = None, show: bool = True) -> Optional[plt.Axes]:
+def _clip_hollow_to_solids(
+    hollow_points: List[Point], 
+    solid_contours: List['Contour']
+) -> List[List[Point]]:
+    """
+    Clip a hollow contour to only the parts that intersect with solid regions.
+    
+    Args:
+        hollow_points: Discretized points of the hollow contour
+        solid_contours: List of solid contours to clip against
+        
+    Returns:
+        List of clipped point lists (one for each solid intersection)
+    """
+    # Import clipping functions from geometry module
+    from .geometry import _clip_polygon, _polygon_area_signed
+    
+    clipped_regions = []
+    
+    for solid in solid_contours:
+        solid_points = solid.discretize()
+        if len(solid_points) < 3:
+            continue
+            
+        # Clip hollow to this solid
+        clipped = _clip_polygon(hollow_points, solid_points)
+        
+        # Only keep if it has area (actual intersection)
+        if len(clipped) >= 3 and abs(_polygon_area_signed(clipped)) > 1e-9:
+            clipped_regions.append(clipped)
+    
+    return clipped_regions
+
+
+def plot_section(
+    section: 'Section', 
+    ax: Optional[plt.Axes] = None, 
+    show: bool = True
+) -> Optional[plt.Axes]:
     """
     Plot the cross-section geometry with native curve rendering.
+    
+    Hollow regions are clipped to only show the parts that actually 
+    intersect with solid regions (matching the property calculation).
     
     Args:
         section: The section to plot
@@ -108,47 +160,58 @@ def plot_section(section: 'Section', ax: Optional[plt.Axes] = None, show: bool =
     Returns:
         The axes object used for plotting.
     """
-    if not section.geometry or not section.geometry.shapes:
+    if not section.geometry or not section.geometry.contours:
         print("No geometry defined for this section.")
         return None
 
     if ax is None:
         fig, ax = plt.subplots()
     
-    solids = [s for s in section.geometry.shapes if not s.hollow]
-    hollows = [s for s in section.geometry.shapes if s.hollow]
+    solids = [c for c in section.geometry.contours if not c.hollow]
+    hollows = [c for c in section.geometry.contours if c.hollow]
     
-    all_z = []
-    all_y = []
+    all_z: List[float] = []
+    all_y: List[float] = []
     
     # Plot solids
-    for s in solids:
-        path = _shape_to_path(s)
+    for contour in solids:
+        path = contour_to_path(contour)
         if path is None:
             continue
-            
-        # Collect bounds from points
-        for p in s.points:
+        
+        # Collect bounds from discretized points
+        points = contour.discretize()
+        for p in points:
             all_y.append(p[0])
             all_z.append(p[1])
         
         patch = PathPatch(path, facecolor='silver', edgecolor='black', 
                          alpha=0.8, linewidth=1.0)
         ax.add_patch(patch)
-        
-    # Plot hollows
-    for h in hollows:
-        path = _shape_to_path(h)
-        if path is None:
+    
+    # Plot hollows - clipped to solid regions
+    for contour in hollows:
+        hollow_points = contour.discretize()
+        if len(hollow_points) < 3:
             continue
-            
-        for p in h.points:
-            all_y.append(p[0])
-            all_z.append(p[1])
         
-        patch = PathPatch(path, facecolor='white', edgecolor='black',
-                         linestyle='--', alpha=1.0, linewidth=1.0)
-        ax.add_patch(patch)
+        # Clip hollow to solid regions
+        clipped_regions = _clip_hollow_to_solids(hollow_points, solids)
+        
+        for clipped_points in clipped_regions:
+            # Collect bounds from clipped points
+            for p in clipped_points:
+                all_y.append(p[0])
+                all_z.append(p[1])
+            
+            # Create path from clipped polygon
+            path = points_to_path(clipped_points)
+            if path is None:
+                continue
+            
+            patch = PathPatch(path, facecolor='white', edgecolor='black',
+                             linestyle='--', alpha=1.0, linewidth=1.0)
+            ax.add_patch(patch)
         
     # Set limits and aspect
     if all_z and all_y:
@@ -158,8 +221,10 @@ def plot_section(section: 'Section', ax: Optional[plt.Axes] = None, show: bool =
         dz = z_max - z_min
         dy = y_max - y_min
         
-        if dz == 0: dz = 1.0
-        if dy == 0: dy = 1.0
+        if dz == 0:
+            dz = 1.0
+        if dy == 0:
+            dy = 1.0
         
         padding_z = dz * 0.1
         padding_y = dy * 0.1
@@ -168,8 +233,8 @@ def plot_section(section: 'Section', ax: Optional[plt.Axes] = None, show: bool =
         ax.set_ylim(y_min - padding_y, y_max + padding_y)
         ax.set_aspect('equal')
     
-    ax.set_xlabel('z (Horizontal)')
-    ax.set_ylabel('y (Vertical)')
+    ax.set_xlabel('z')
+    ax.set_ylabel('y', rotation=0)
     ax.set_title(f"Section: {section.name}")
     ax.grid(True, linestyle=':', alpha=0.6)
 

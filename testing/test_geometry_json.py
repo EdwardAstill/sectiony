@@ -59,6 +59,8 @@ class TestGeometryJSON(unittest.TestCase):
         with open(self.filename, 'r') as f:
             content = json.load(f)
             self.assertIn("contours", content)
+            self.assertIn("version", content)  # Now includes version
+            self.assertEqual(content["version"], 1)
             self.assertEqual(len(content["contours"]), 1)
             self.assertEqual(len(content["contours"][0]["segments"]), 2)
             
@@ -70,6 +72,44 @@ class TestGeometryJSON(unittest.TestCase):
         self.assertIsInstance(segments[0], Line)
         self.assertIsInstance(segments[1], Arc)
 
+    def test_contour_from_points(self):
+        """Test creating contour from points (polygon)."""
+        points = [(0, 0), (10, 0), (10, 10), (0, 10)]
+        contour = Contour.from_points(points, hollow=False)
+        
+        self.assertEqual(len(contour.segments), 4)
+        for seg in contour.segments:
+            self.assertIsInstance(seg, Line)
+        
+        # Verify discretization returns original points
+        discretized = contour.discretize()
+        self.assertEqual(len(discretized), 4)
+
+    def test_validation_missing_fields(self):
+        """Test that from_dict raises error for missing fields."""
+        with self.assertRaises(ValueError) as ctx:
+            Line.from_dict({"type": "line", "start": (0, 0)})  # Missing "end"
+        self.assertIn("end", str(ctx.exception))
+        
+        with self.assertRaises(ValueError) as ctx:
+            Arc.from_dict({"type": "arc", "center": (0, 0)})  # Missing fields
+        self.assertIn("radius", str(ctx.exception))
+        
+        with self.assertRaises(ValueError) as ctx:
+            Contour.from_dict({})  # Missing "segments"
+        self.assertIn("segments", str(ctx.exception))
+
+    def test_validation_missing_segment_type(self):
+        """Test that from_dict raises error for missing segment type."""
+        with self.assertRaises(ValueError) as ctx:
+            Contour.from_dict({"segments": [{"start": (0, 0), "end": (1, 1)}]})
+        self.assertIn("type", str(ctx.exception))
+
+    def test_validation_unknown_segment_type(self):
+        """Test that from_dict raises error for unknown segment type."""
+        with self.assertRaises(ValueError) as ctx:
+            Contour.from_dict({"segments": [{"type": "unknown"}]})
+        self.assertIn("Unknown segment type", str(ctx.exception))
+
 if __name__ == '__main__':
     unittest.main()
-

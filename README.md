@@ -52,7 +52,7 @@ Sectiony provides a library of common structural shapes that can be easily gener
 ## Features
 
 ### Geometry Visualization
-You can visualize the cross-section geometry, including accurate rendering of curved segments.
+You can visualize the cross-section geometry, including accurate rendering of curved segments. Holes are automatically clipped to only show where they intersect with solid material.
 
 ```python
 from sectiony.library import i
@@ -62,6 +62,12 @@ beam = i(d=100.0, b=50.0, tf=10.0, tw=5.0, r=5.0)
 
 # Plot the section
 beam.plot()
+
+# Save plot to file
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+beam.plot(ax=ax, show=False)
+fig.savefig("beam.svg", format='svg')
 ```
 
 ### Stress Analysis and Plotting
@@ -86,7 +92,7 @@ stress_analysis.plot(stress_type="von_mises", cmap="inferno")
 ```
 
 ### JSON Serialization
-You can save and load complex section geometries using JSON.
+You can save and load complex section geometries using JSON. The format preserves exact curve definitions (not just discretized points) and includes schema versioning.
 
 ```python
 from sectiony import Geometry
@@ -96,7 +102,16 @@ beam.geometry.to_json("my_beam.json")
 
 # Load geometry
 loaded_geom = Geometry.from_json("my_beam.json")
+
+# Properties are preserved exactly
+new_section = Section(name="Loaded", geometry=loaded_geom)
+print(f"Area: {new_section.A:.2f}")  # Same as original
 ```
+
+**See Examples:**
+- `examples/making_sections.py` - Comprehensive examples of creating sections
+- `examples/gallery/` - Visual gallery of section types
+- `examples/json/` - Sample JSON files for all section types
 
 ## Section Properties
 

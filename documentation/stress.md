@@ -102,3 +102,4 @@ stress.plot("von_mises")   # Von Mises stress
 
 - Shear stress calculations (`tau_shear`, `tau_torsion`) use simplified approximations. Accurate distributions require numerical methods.
 - Sign convention: positive `Mz` compresses positive `y` fibers (top of section).
+- Stress plots automatically handle holes and clip them to only show where they intersect with solid material, matching the property calculation behavior.

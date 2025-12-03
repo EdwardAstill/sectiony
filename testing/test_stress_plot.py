@@ -12,7 +12,7 @@ src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from sectiony.geometry import Geometry, Shape
+from sectiony.geometry import Geometry, Contour
 from sectiony.section import Section
 from sectiony.stress import Stress
 
@@ -22,9 +22,10 @@ class TestStressCalculations(unittest.TestCase):
         print(f"\nRunning test: {self._testMethodName}")
         # Simple 10x10 square centered at origin
         points = [(5, 5), (5, -5), (-5, -5), (-5, 5)]
+        contour = Contour.from_points(points)
         self.square_section = Section(
             name="Square",
-            geometry=Geometry(shapes=[Shape(points=points)])
+            geometry=Geometry(contours=[contour])
         )
 
     def test_sigma_axial(self):
@@ -107,9 +108,10 @@ class TestStressMinMax(unittest.TestCase):
     def setUp(self):
         print(f"\nRunning test: {self._testMethodName}")
         points = [(5, 5), (5, -5), (-5, -5), (-5, 5)]
+        contour = Contour.from_points(points)
         self.section = Section(
             name="Square",
-            geometry=Geometry(shapes=[Shape(points=points)])
+            geometry=Geometry(contours=[contour])
         )
 
     def test_max_axial(self):
@@ -137,9 +139,10 @@ class TestStressPlot(unittest.TestCase):
     def setUp(self):
         print(f"\nRunning test: {self._testMethodName}")
         points = [(5, 5), (5, -5), (-5, -5), (-5, 5)]
+        contour = Contour.from_points(points)
         self.section = Section(
             name="Square",
-            geometry=Geometry(shapes=[Shape(points=points)])
+            geometry=Geometry(contours=[contour])
         )
 
     def tearDown(self):
@@ -188,12 +191,13 @@ class TestStressHollowSection(unittest.TestCase):
         print(f"\nRunning test: {self._testMethodName}")
         outer = [(10, 10), (10, -10), (-10, -10), (-10, 10)]
         inner = [(5, 5), (5, -5), (-5, -5), (-5, 5)]
+        
+        outer_contour = Contour.from_points(outer, hollow=False)
+        inner_contour = Contour.from_points(inner, hollow=True)
+        
         self.section = Section(
             name="Hollow",
-            geometry=Geometry(shapes=[
-                Shape(points=outer),
-                Shape(points=inner, hollow=True)
-            ])
+            geometry=Geometry(contours=[outer_contour, inner_contour])
         )
 
     def tearDown(self):
@@ -216,5 +220,3 @@ class TestStressHollowSection(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-

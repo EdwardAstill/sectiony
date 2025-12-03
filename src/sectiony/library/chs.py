@@ -1,5 +1,5 @@
 import math
-from ..geometry import Shape, Geometry, Contour, Arc
+from ..geometry import Geometry, Contour, Arc
 from ..section import Section
 
 

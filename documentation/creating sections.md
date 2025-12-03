@@ -159,6 +159,11 @@ my_d_section = Section(name="D Shape", geometry=geom)
 
 To create a hollow section, simply add multiple contours to the geometry. Set `hollow=True` for internal voids.
 
+**Important:** Holes are automatically clipped to only subtract from regions where they intersect with solid material. This means:
+- Property calculations only subtract the portion of holes that overlap with solids
+- Visualizations only show holes where they actually intersect solids
+- Holes that extend beyond solid boundaries are automatically trimmed
+
 ```python
 # Outer contour (defined as above)
 outer_contour = Contour(segments=..., hollow=False)
@@ -171,3 +176,79 @@ inner_contour = Contour(segments=[hole_arc], hollow=True)
 geom = Geometry(contours=[outer_contour, inner_contour])
 sec = Section(name="Hollow D", geometry=geom)
 ```
+
+**Example: I-Beam with Web Opening**
+
+```python
+# Create I-beam with a rectangular web opening
+# The opening will be automatically clipped to only subtract from the web region
+i_beam_contour = Contour(segments=[...], hollow=False)  # I-beam outline
+opening_contour = Contour.from_points([...], hollow=True)  # Rectangular opening
+
+geom = Geometry(contours=[i_beam_contour, opening_contour])
+section = Section(name="I-Beam with Opening", geometry=geom)
+# The opening is automatically clipped to only affect the web, not the flanges
+```
+
+### Creating Simple Polygons from Points
+
+For simple polygonal shapes without curves, use `Contour.from_points()`:
+
+```python
+from sectiony import Contour, Geometry, Section
+
+# Create a triangle from points
+points = [(10, 0), (-5, 8.66), (-5, -8.66)]
+contour = Contour.from_points(points, hollow=False)
+
+geom = Geometry(contours=[contour])
+triangle_section = Section(name="Triangle", geometry=geom)
+```
+
+### JSON Serialization
+
+Geometries can be saved to and loaded from JSON files with full curve preservation:
+
+```python
+# Save geometry
+geom.to_json("my_section.json")
+
+# Load geometry
+loaded_geom = Geometry.from_json("my_section.json")
+
+# The JSON includes a schema version for forward compatibility
+# Version 1: Supports Line, Arc, and CubicBezier segments
+```
+
+**JSON Structure:**
+
+The JSON format preserves exact curve definitions (not just discretized points):
+
+```json
+{
+  "version": 1,
+  "contours": [
+    {
+      "segments": [
+        {
+          "type": "line",
+          "start": [0, 0],
+          "end": [10, 0]
+        },
+        {
+          "type": "arc",
+          "center": [5, 0],
+          "radius": 5.0,
+          "start_angle": 0,
+          "end_angle": 3.14159
+        }
+      ],
+      "hollow": false
+    }
+  ]
+}
+```
+
+**Validation:**
+
+The `from_dict()` and `from_json()` methods validate required fields and provide clear error messages if data is missing or invalid.

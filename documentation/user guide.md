@@ -40,7 +40,19 @@ geom = Geometry(contours=[solid_contour, hole_contour])
 my_section = Section(name="Hollow Rect", geometry=geom)
 ```
 
-**Note:** For simple polygons, you can also use the legacy `Shape` class with a list of points, but `Contour` is preferred as it supports curves.
+**Tip:** For simple polygons, you can use `Contour.from_points()` as a shortcut:
+
+```python
+from sectiony import Contour, Geometry, Section
+
+# Create a rectangle from points
+points = [(10, 5), (10, -5), (-10, -5), (-10, 5)]
+contour = Contour.from_points(points, hollow=False)
+
+# Create the section
+geom = Geometry(contours=[contour])
+my_section = Section(name="Simple Rect", geometry=geom)
+```
 
 ## 2. Accessing Section Properties
 
@@ -113,11 +125,11 @@ stress.plot("sigma")
 stress.plot("von_mises")
 ```
 
-The plots automatically handle holes and complex geometries, masking the stress values outside the material.
+The plots automatically handle holes and complex geometries, masking the stress values outside the material. Holes are automatically clipped to only show where they intersect with solid regions, matching the property calculation behavior.
 
 ## 5. Saving and Loading (JSON)
 
-You can save your section geometry to a file for later use.
+You can save your section geometry to a file for later use. The JSON format preserves exact curve definitions (Line, Arc, CubicBezier), not just discretized points.
 
 ```python
 # Save to JSON
@@ -127,4 +139,18 @@ my_section.geometry.to_json("my_section.json")
 from sectiony import Geometry
 loaded_geom = Geometry.from_json("my_section.json")
 loaded_section = Section(name="Loaded Section", geometry=loaded_geom)
+
+# Verify properties match
+print(f"Original area: {my_section.A:.2f}")
+print(f"Loaded area: {loaded_section.A:.2f}")
 ```
+
+**JSON Features:**
+- **Schema Versioning**: JSON files include a version number for forward compatibility
+- **Exact Curves**: Native curve definitions are preserved (not just polygon approximations)
+- **Validation**: Loading validates required fields and provides clear error messages
+- **Programmatic Access**: Use `geometry.to_dict()` and `Geometry.from_dict()` for in-memory serialization
+
+**Example Files:**
+
+See `examples/json/` for sample JSON files and `examples/gallery/` for visualization examples of all section types.

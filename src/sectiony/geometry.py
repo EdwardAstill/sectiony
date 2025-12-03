@@ -3,6 +3,10 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Union, Dict, Any
 import math
 import json
+import warnings
+
+# Schema version for JSON serialization
+_SCHEMA_VERSION = 1
 
 # Type alias for points
 Point = Tuple[float, float]
@@ -30,6 +34,11 @@ class Line:
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'Line':
+        """Create Line from dictionary. Validates required fields."""
+        required = ["start", "end"]
+        missing = [k for k in required if k not in data]
+        if missing:
+            raise ValueError(f"Line missing required fields: {missing}")
         return Line(
             start=tuple(data["start"]),
             end=tuple(data["end"])
@@ -82,6 +91,11 @@ class Arc:
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'Arc':
+        """Create Arc from dictionary. Validates required fields."""
+        required = ["center", "radius", "start_angle", "end_angle"]
+        missing = [k for k in required if k not in data]
+        if missing:
+            raise ValueError(f"Arc missing required fields: {missing}")
         return Arc(
             center=tuple(data["center"]),
             radius=data["radius"],
@@ -196,6 +210,11 @@ class CubicBezier:
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'CubicBezier':
+        """Create CubicBezier from dictionary. Validates required fields."""
+        required = ["p0", "p1", "p2", "p3"]
+        missing = [k for k in required if k not in data]
+        if missing:
+            raise ValueError(f"CubicBezier missing required fields: {missing}")
         return CubicBezier(
             p0=tuple(data["p0"]),
             p1=tuple(data["p1"]),
@@ -248,9 +267,16 @@ class Contour:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Contour':
+        """Create Contour from dictionary. Validates required fields."""
+        if "segments" not in data:
+            raise ValueError("Contour missing required field: segments")
+        
         segments = []
         for seg_data in data["segments"]:
-            type_ = seg_data.get("type")
+            if "type" not in seg_data:
+                raise ValueError("Segment missing required field: type")
+            
+            type_ = seg_data["type"]
             if type_ == "line":
                 segments.append(Line.from_dict(seg_data))
             elif type_ == "arc":
@@ -260,89 +286,84 @@ class Contour:
             else:
                 raise ValueError(f"Unknown segment type: {type_}")
         
-        return cls(segments=segments, hollow=data.get("hollow", False))
-
-
-# Legacy Shape class - now wraps a Contour for backward compatibility during transition
-@dataclass
-class Shape:
-    """
-    Legacy shape class that wraps points.
-    Prefer using Contour for new code.
-    """
-    points: List[Point] = field(default_factory=list)
-    hollow: bool = False
-    _contour: Contour = field(default=None, repr=False)
-
-    def __post_init__(self):
-        # If points provided but no contour, create contour from points
-        if self.points and self._contour is None:
-            self._contour = self._points_to_contour()
-
-    def _points_to_contour(self) -> Contour:
-        """Convert point list to a contour of line segments."""
-        if len(self.points) < 2:
-            return Contour(segments=[], hollow=self.hollow)
-        
-        segments = []
-        for i in range(len(self.points)):
-            start = self.points[i]
-            end = self.points[(i + 1) % len(self.points)]
-            segments.append(Line(start=start, end=end))
-        
-        return Contour(segments=segments, hollow=self.hollow)
+        hollow = data["hollow"] if "hollow" in data else False
+        return cls(segments=segments, hollow=hollow)
 
     @classmethod
-    def from_contour(cls, contour: Contour) -> 'Shape':
-        """Create a Shape from a Contour."""
-        points = contour.discretize()
-        shape = cls(points=points, hollow=contour.hollow)
-        shape._contour = contour
-        return shape
+    def from_points(cls, points: List[Point], hollow: bool = False) -> 'Contour':
+        """
+        Create a Contour from a list of points (polygon).
+        Convenience method for creating simple polygonal contours.
+        """
+        if len(points) < 2:
+            return cls(segments=[], hollow=hollow)
+        
+        segments = []
+        for i in range(len(points)):
+            start = points[i]
+            end = points[(i + 1) % len(points)]
+            segments.append(Line(start=start, end=end))
+        
+        return cls(segments=segments, hollow=hollow)
 
 
 @dataclass
 class Geometry:
-    """Collection of shapes/contours that define a cross-section."""
-    shapes: List[Shape] = field(default_factory=list)
+    """Collection of contours that define a cross-section."""
     contours: List[Contour] = field(default_factory=list)
 
-    def __post_init__(self):
-        # If contours provided but shapes not, create shapes from contours
-        if self.contours and not self.shapes:
-            self.shapes = [Shape.from_contour(c) for c in self.contours]
-        # If shapes provided but contours not, create contours from shapes
-        elif self.shapes and not self.contours:
-            self.contours = [s._contour if s._contour else s._points_to_contour() 
-                           for s in self.shapes]
+    def get_discretized_contours(self, resolution: int = 32) -> List[Tuple[List[Point], bool]]:
+        """
+        Get discretized points for each contour.
+        
+        Returns:
+            List of (points, hollow) tuples for each contour.
+        """
+        return [(c.discretize(resolution), c.hollow) for c in self.contours]
 
-    def reduce_hollows(self) -> List[Shape]:
-        """Clip polygons to handle holes."""
-        return _reduce_hollows_impl(self.shapes)
+    def reduce_hollows(self) -> List[Tuple[List[Point], bool]]:
+        """
+        Clip polygons to handle holes. Returns discretized points with hollow flags.
+        """
+        discretized = self.get_discretized_contours()
+        return _reduce_hollows_impl(discretized)
 
-    def calculate_properties(self):
+    def calculate_properties(self) -> 'SectionProperties':
         """Calculate section properties."""
         from .properties import calculate_exact_properties, calculate_grid_properties, SectionProperties
         
-        reduced_shapes = self.reduce_hollows()
-        props = calculate_exact_properties(reduced_shapes)
-        calculate_grid_properties(props, reduced_shapes)
+        reduced = self.reduce_hollows()
+        props = calculate_exact_properties(reduced)
+        calculate_grid_properties(props, reduced)
         
         return props
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert geometry to dictionary."""
+        """Convert geometry to dictionary with schema version."""
         return {
+            "version": _SCHEMA_VERSION,
             "contours": [c.to_dict() for c in self.contours]
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Geometry':
-        """Create geometry from dictionary."""
+        """Create geometry from dictionary. Validates structure."""
+        # Handle versioning
+        version = data["version"] if "version" in data else 1
+        if version > _SCHEMA_VERSION:
+            warnings.warn(
+                f"JSON schema version {version} is newer than supported version {_SCHEMA_VERSION}. "
+                "Some features may not load correctly.",
+                UserWarning
+            )
+        
+        if "contours" not in data:
+            raise ValueError("Geometry missing required field: contours")
+        
         contours = [Contour.from_dict(c) for c in data["contours"]]
         return cls(contours=contours)
 
-    def to_json(self, file_path: str):
+    def to_json(self, file_path: str) -> None:
         """Save geometry to a JSON file."""
         with open(file_path, 'w') as f:
             json.dump(self.to_dict(), f, indent=2)
@@ -359,23 +380,33 @@ class Geometry:
 # Geometry Utils (Clipping)
 # -----------------------------------------------------------------------------
 
-def _reduce_hollows_impl(shapes: List[Shape]) -> List[Shape]:
-    solids = [s for s in shapes if not s.hollow]
-    hollows = [s for s in shapes if s.hollow]
+def _reduce_hollows_impl(discretized: List[Tuple[List[Point], bool]]) -> List[Tuple[List[Point], bool]]:
+    """
+    Clip polygons to handle holes.
+    
+    Args:
+        discretized: List of (points, hollow) tuples
+        
+    Returns:
+        List of (points, hollow) tuples with holes clipped to solids
+    """
+    solids = [(pts, h) for pts, h in discretized if not h]
+    hollows = [(pts, h) for pts, h in discretized if h]
     
     if not hollows:
         return solids
         
-    reduced_shapes = list(solids)
-    for h in hollows:
-        for s in solids:
-            clipped_points = _clip_polygon(h.points, s.points)
+    reduced = list(solids)
+    for h_pts, _ in hollows:
+        for s_pts, _ in solids:
+            clipped_points = _clip_polygon(h_pts, s_pts)
             if len(clipped_points) >= 3 and abs(_polygon_area_signed(clipped_points)) > 1e-9:
-                reduced_shapes.append(Shape(points=clipped_points, hollow=True))
-    return reduced_shapes
+                reduced.append((clipped_points, True))
+    return reduced
 
 
 def _polygon_area_signed(points: List[Point]) -> float:
+    """Calculate signed area of polygon using shoelace formula."""
     area = 0.0
     for i in range(len(points)):
         j = (i + 1) % len(points)

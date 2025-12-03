@@ -11,7 +11,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from sectiony.library import chs, rhs, i, u
-from sectiony.geometry import Geometry, Shape
+from sectiony.geometry import Geometry, Contour
 from sectiony.section import Section
 
 class TestSectionPlot(unittest.TestCase):
@@ -24,10 +24,10 @@ class TestSectionPlot(unittest.TestCase):
         points_outer = [(10,10), (10,-10), (-10,-10), (-10,10)]
         points_inner = [(5,5), (5,-5), (-5,-5), (-5,5)]
         
-        geom = Geometry(shapes=[
-            Shape(points=points_outer),
-            Shape(points=points_inner, hollow=True)
-        ])
+        outer_contour = Contour.from_points(points_outer, hollow=False)
+        inner_contour = Contour.from_points(points_inner, hollow=True)
+        
+        geom = Geometry(contours=[outer_contour, inner_contour])
         sec = Section(name="Plot Test Hollow", geometry=geom)
         
         fig, ax = plt.subplots()
@@ -65,8 +65,8 @@ class TestSectionPlot(unittest.TestCase):
         self.assertTrue(aspect == 'equal' or aspect == 1.0)
         
         # Check labels
-        self.assertEqual(ax.get_xlabel(), 'z (Horizontal)')
-        self.assertEqual(ax.get_ylabel(), 'y (Vertical)')
+        self.assertEqual(ax.get_xlabel(), 'z')
+        self.assertEqual(ax.get_ylabel(), 'y')
         plt.close(fig)
 
 if __name__ == "__main__":

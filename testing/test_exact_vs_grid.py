@@ -10,7 +10,7 @@ if str(src_path) not in sys.path:
 
 from sectiony.library import chs, rhs
 from sectiony.section import Section
-from sectiony.geometry import Geometry, Shape
+from sectiony.geometry import Geometry, Contour
 
 class TestExactVsGrid(unittest.TestCase):
     def setUp(self):
@@ -21,7 +21,8 @@ class TestExactVsGrid(unittest.TestCase):
         b, h = 10.0, 20.0
         # Create manually
         points = [(h/2, b/2), (h/2, -b/2), (-h/2, -b/2), (-h/2, b/2)]
-        sec = Section(name="Rect", geometry=Geometry(shapes=[Shape(points)]))
+        contour = Contour.from_points(points)
+        sec = Section(name="Rect", geometry=Geometry(contours=[contour]))
         
         # Exact (Green's theorem)
         exact_A = sec.A

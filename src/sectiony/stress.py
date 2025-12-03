@@ -4,14 +4,17 @@ import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING, Literal, Callable
+from typing import Optional, TYPE_CHECKING, Literal, Callable, List, Tuple
 
 if TYPE_CHECKING:
     from .section import Section
-    from .geometry import Shape, Contour
+    from .geometry import Contour
 
 # Type alias for stress calculation function
 StressFunc = Callable[[float, float], float]
+
+# Type alias for points
+Point = Tuple[float, float]
 
 # Supported stress types
 StressType = Literal["sigma", "sigma_axial", "sigma_bending", "tau", "tau_shear", "tau_torsion", "von_mises"]
@@ -21,27 +24,16 @@ _PLOT_RESOLUTION = 200  # Increased resolution
 _PLOT_PADDING_FACTOR = 0.1
 _CONTOUR_LEVELS = 20
 
-
-def _shape_to_path(shape: 'Shape') -> Path:
-    """
-    Convert a Shape to a matplotlib Path.
-    Uses native curves if contour available, otherwise falls back to polygon.
-    Duplicate of logic in plotter.py to avoid circular imports or duplication.
-    """
-    # Try to use contour for native curves
-    if hasattr(shape, '_contour') and shape._contour and shape._contour.segments:
-        from .plotter import _contour_to_path
-        return _contour_to_path(shape._contour)
-    
-    # Fallback: use points as polygon
-    if not shape.points or len(shape.points) < 3:
-        return None
-    
-    vertices = [(p[1], p[0]) for p in shape.points]  # Convert (y,z) to (z,y)
-    vertices.append(vertices[0])  # Close
-    codes = [Path.MOVETO] + [Path.LINETO] * (len(shape.points) - 1) + [Path.CLOSEPOLY]
-    
-    return Path(vertices, codes)
+# Display names for stress types
+_STRESS_DISPLAY_NAMES: dict[str, str] = {
+    "sigma": "σ",
+    "sigma_axial": "σ (axial)",
+    "sigma_bending": "σ (bending)",
+    "tau": "τ",
+    "tau_shear": "τ (shear)",
+    "tau_torsion": "τ (torsion)",
+    "von_mises": "Von Mises",
+}
 
 
 @dataclass
@@ -143,18 +135,18 @@ class Stress:
             raise ValueError(f"Unknown stress type: {stress_type}. Valid types: {valid}")
         return funcs[stress_type]
 
-    def _sample_points(self) -> list[tuple[float, float]]:
-        """Get sample points from geometry for stress calculations."""
+    def _get_all_points(self) -> List[Point]:
+        """Get all discretized points from geometry for stress calculations."""
         if not self.section.geometry:
             return []
-        points = []
-        for shape in self.section.geometry.shapes:
-            points.extend(shape.points)
+        points: List[Point] = []
+        for contour in self.section.geometry.contours:
+            points.extend(contour.discretize())
         return points
 
     def max(self, stress_type: StressType = "von_mises") -> float:
         """Maximum stress value over geometry vertices."""
-        points = self._sample_points()
+        points = self._get_all_points()
         if not points:
             return 0.0
         func = self.get_stress_func(stress_type)
@@ -162,7 +154,7 @@ class Stress:
 
     def min(self, stress_type: StressType = "von_mises") -> float:
         """Minimum stress value over geometry vertices."""
-        points = self._sample_points()
+        points = self._get_all_points()
         if not points:
             return 0.0
         func = self.get_stress_func(stress_type)
@@ -172,11 +164,12 @@ class Stress:
         """Calculate stress at a specific point."""
         return self.get_stress_func(stress_type)(y, z)
 
-    def _compute_bounds(self) -> tuple[float, float, float, float]:
+    def _compute_bounds(self) -> Tuple[float, float, float, float]:
         """Compute bounding box of geometry."""
-        all_ys, all_zs = [], []
-        for shape in self.section.geometry.shapes:
-            for y, z in shape.points:
+        all_ys: List[float] = []
+        all_zs: List[float] = []
+        for contour in self.section.geometry.contours:
+            for y, z in contour.discretize():
                 all_ys.append(y)
                 all_zs.append(z)
         return min(all_ys), max(all_ys), min(all_zs), max(all_zs)
@@ -188,50 +181,62 @@ class Stress:
         """
         points_flat = np.column_stack((Y.flatten(), Z.flatten()))
         
-        solids = [s for s in self.section.geometry.shapes if not s.hollow]
-        hollows = [s for s in self.section.geometry.shapes if s.hollow]
+        solids = [c for c in self.section.geometry.contours if not c.hollow]
+        hollows = [c for c in self.section.geometry.contours if c.hollow]
         
         is_in_solid = np.zeros(len(points_flat), dtype=bool)
         for solid in solids:
-            # Create Path from points (y, z) matching our grid
-            path = Path(solid.points)
-            # contains_points handles the winding/inclusion correctly
-            # We treat shapes as polygons here for masking purposes
-            is_in_solid |= path.contains_points(points_flat)
+            # Create Path from discretized points
+            pts = solid.discretize()
+            if len(pts) >= 3:
+                path = Path(pts)
+                is_in_solid |= path.contains_points(points_flat)
         
         is_in_hollow = np.zeros(len(points_flat), dtype=bool)
         for hollow in hollows:
-            path = Path(hollow.points)
-            is_in_hollow |= path.contains_points(points_flat)
+            pts = hollow.discretize()
+            if len(pts) >= 3:
+                path = Path(pts)
+                is_in_hollow |= path.contains_points(points_flat)
         
         return (is_in_solid & ~is_in_hollow).reshape(Y.shape)
 
     def _draw_outlines(self, ax: plt.Axes) -> None:
         """
-        Draw shape outlines on the plot using high-quality paths.
-        Matches the style of sectiony.plotter.
+        Draw contour outlines on the plot using high-quality paths.
+        Uses shared path conversion from plotter module.
+        Hollows are clipped to only show the parts that intersect with solids.
         """
-        solids = [s for s in self.section.geometry.shapes if not s.hollow]
-        hollows = [s for s in self.section.geometry.shapes if s.hollow]
+        from .plotter import contour_to_path, points_to_path, _clip_hollow_to_solids
+        
+        solids = [c for c in self.section.geometry.contours if not c.hollow]
+        hollows = [c for c in self.section.geometry.contours if c.hollow]
         
         # Draw solids
-        for s in solids:
-            path = _shape_to_path(s)
+        for contour in solids:
+            path = contour_to_path(contour)
             if path is None:
                 continue
-            # Use PathPatch for cleaner curves, set fill=False for outline only
             patch = PathPatch(path, facecolor='none', edgecolor='black', 
                               linewidth=1.5)
             ax.add_patch(patch)
             
-        # Draw hollows
-        for h in hollows:
-            path = _shape_to_path(h)
-            if path is None:
+        # Draw hollows - clipped to solid regions
+        for contour in hollows:
+            hollow_points = contour.discretize()
+            if len(hollow_points) < 3:
                 continue
-            patch = PathPatch(path, facecolor='none', edgecolor='black',
-                             linestyle='--', linewidth=1.0)
-            ax.add_patch(patch)
+            
+            # Clip hollow to solid regions
+            clipped_regions = _clip_hollow_to_solids(hollow_points, solids)
+            
+            for clipped_points in clipped_regions:
+                path = points_to_path(clipped_points)
+                if path is None:
+                    continue
+                patch = PathPatch(path, facecolor='none', edgecolor='black',
+                                 linestyle='--', linewidth=1.0)
+                ax.add_patch(patch)
 
     def plot(
         self,
@@ -267,10 +272,10 @@ class Stress:
         dz = max_z - min_z
         dy = max_y - min_y
         padding = max(dz, dy) * _PLOT_PADDING_FACTOR
-        if padding == 0: padding = 1.0
+        if padding == 0:
+            padding = 1.0
         
         # Create evaluation grid with higher resolution
-        # Using 200+ points creates smoother contours near edges
         z_grid = np.linspace(min_z - padding, max_z + padding, _PLOT_RESOLUTION)
         y_grid = np.linspace(min_y - padding, max_y + padding, _PLOT_RESOLUTION)
         Z, Y = np.meshgrid(z_grid, y_grid)
@@ -279,17 +284,13 @@ class Stress:
         S = np.vectorize(func)(Y, Z)
 
         # Mask points outside geometry
-        # Note: The mask is pixel-based (grid), so it will always be slightly jagged.
-        # For perfect edge alignment, we would need to clip the contour artist or use
-        # triangulation, but masking is robust for arbitrary shapes.
-        # Increasing resolution helps reduce the jaggedness.
         mask = self._create_mask(Y, Z)
         S_masked = np.where(mask, S, np.nan)
 
         # Plot contours
-        # Use more levels for smoother transitions
-        contour = ax.contourf(Z, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
-        plt.colorbar(contour, ax=ax, label=f'{stress_type}')
+        contour_plot = ax.contourf(Z, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
+        display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
+        plt.colorbar(contour_plot, ax=ax, label=display_name)
 
         # Draw outlines on top to hide jagged edges
         self._draw_outlines(ax)
@@ -301,7 +302,7 @@ class Stress:
         ax.set_aspect('equal')
         ax.set_xlabel('z')
         ax.set_ylabel('y')
-        ax.set_title(f'{stress_type} stress')
+        ax.set_title(f'{display_name} stress')
 
         if show:
             plt.show()
