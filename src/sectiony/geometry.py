@@ -22,6 +22,9 @@ class Line:
         """Return start and end points (lines don't need intermediate points)."""
         return [self.start, self.end]
 
+    def start_point(self) -> Point:
+        return self.start
+
     def end_point(self) -> Point:
         return self.end
 
@@ -73,6 +76,12 @@ class Arc:
             z = cz + self.radius * math.cos(theta)
             points.append((y, z))
         return points
+
+    def start_point(self) -> Point:
+        cy, cz = self.center
+        y = cy + self.radius * math.sin(self.start_angle)
+        z = cz + self.radius * math.cos(self.start_angle)
+        return (y, z)
 
     def end_point(self) -> Point:
         cy, cz = self.center
@@ -196,6 +205,9 @@ class CubicBezier:
              t**3 * self.p3[1])
         return (y, z)
 
+    def start_point(self) -> Point:
+        return self.p0
+
     def end_point(self) -> Point:
         return self.p3
 
@@ -230,11 +242,22 @@ Segment = Union[Line, Arc, CubicBezier]
 @dataclass
 class Contour:
     """
-    A closed contour made up of connected curve segments.
-    Segments should form a closed loop (end of last connects to start of first).
+    A contour made up of connected curve segments.
+    Can be open or closed.
     """
     segments: List[Segment] = field(default_factory=list)
     hollow: bool = False
+
+    @property
+    def is_closed(self) -> bool:
+        """Check if the contour forms a closed loop."""
+        if not self.segments:
+            return False
+            
+        start = self.segments[0].start_point()
+        end = self.segments[-1].end_point()
+        
+        return self._points_equal(start, end)
 
     def discretize(self, resolution: int = 32) -> List[Point]:
         """Convert all segments to a single list of points."""
@@ -256,7 +279,7 @@ class Contour:
         
         return points
 
-    def _points_equal(self, p1: Point, p2: Point, tol: float = 1e-9) -> bool:
+    def _points_equal(self, p1: Point, p2: Point, tol: float = 1e-4) -> bool:
         return abs(p1[0] - p2[0]) < tol and abs(p1[1] - p2[1]) < tol
 
     def to_dict(self) -> Dict[str, Any]:
@@ -311,6 +334,13 @@ class Contour:
 class Geometry:
     """Collection of contours that define a cross-section."""
     contours: List[Contour] = field(default_factory=list)
+
+    @property
+    def is_closed(self) -> bool:
+        """Check if all contours are closed."""
+        if not self.contours:
+            return False
+        return all(c.is_closed for c in self.contours)
 
     def get_discretized_contours(self, resolution: int = 32) -> List[Tuple[List[Point], bool]]:
         """
@@ -374,6 +404,18 @@ class Geometry:
         with open(file_path, 'r') as f:
             data = json.load(f)
         return cls.from_dict(data)
+
+    @classmethod
+    def from_dxf(cls, file_path: str) -> 'Geometry':
+        """Load geometry from a DXF file."""
+        from .dxf_utils import read_dxf
+        contours = read_dxf(file_path)
+        return cls(contours=contours)
+
+    def to_dxf(self, file_path: str) -> None:
+        """Save geometry to a DXF file."""
+        from .dxf_utils import write_dxf
+        write_dxf(file_path, self.contours)
 
 
 # -----------------------------------------------------------------------------

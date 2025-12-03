@@ -43,8 +43,17 @@ class Section:
         return Stress(self, N=N, Vy=Vy, Vz=Vz, Mx=Mx, My=My, Mz=Mz)
 
     def __post_init__(self):
-        if self.geometry and self.A is None:
-            self._apply_properties_from_geometry()
+        if self.geometry:
+            # Validate that geometry consists of closed contours
+            if not self.geometry.is_closed:
+                raise ValueError(
+                    "Section geometry must consist of closed contours. "
+                    "Geometry objects can contain open contours for manipulation, "
+                    "but a Section requires closed loops to calculate properties."
+                )
+            
+            if self.A is None:
+                self._apply_properties_from_geometry()
         
         if self.A is None:
             raise ValueError("Section properties must be provided if geometry is not.")

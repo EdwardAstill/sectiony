@@ -36,7 +36,24 @@ For arbitrary shapes, you define the section by constructing a `Geometry` object
 1.  **Define Segments**: Create a list of connected segments (`Line`, `Arc`, `CubicBezier`) that form a closed loop.
 2.  **Create Contour**: Initialize a `Contour` with these segments. Use `hollow=True` for holes.
 3.  **Create Geometry**: Combine contours into a `Geometry` object.
-4.  **Create Section**: Initialize the `Section` with the geometry.
+4.  **Create Section**: Initialize the `Section` with the geometry. This step validates that your contours are closed.
+
+### Validation: Closed Contours
+
+A **Section** must be defined by **closed contours**. This means the start point of the first segment must match the end point of the last segment (and segments must be connected in between).
+
+- **Geometry objects** can contain open or disconnected contours. This allows you to build shapes incrementally or store partial geometries.
+- **Section objects** enforce closure during initialization. If you try to create a `Section` from a `Geometry` with open contours, a `ValueError` will be raised.
+
+```python
+# Valid - Closed loop
+valid_geom = Geometry(contours=[Contour.from_points([(0,0), (10,0), (0,10)])])
+section = Section("Valid", geometry=valid_geom) # OK
+
+# Invalid - Open loop
+open_geom = Geometry(contours=[Contour.from_points([(0,0), (10,0)])])
+section = Section("Invalid", geometry=open_geom) # Raises ValueError: "Section geometry must consist of closed contours"
+```
 
 ### Available Curves
 
@@ -205,9 +222,13 @@ geom = Geometry(contours=[contour])
 triangle_section = Section(name="Triangle", geometry=geom)
 ```
 
-### JSON Serialization
+### Serialization / Import / Export
 
-Geometries can be saved to and loaded from JSON files with full curve preservation:
+Geometries can be saved to and loaded from JSON or DXF files.
+
+#### JSON Support
+
+The JSON format preserves exact curve definitions (not just discretized points):
 
 ```python
 # Save geometry
@@ -221,8 +242,6 @@ loaded_geom = Geometry.from_json("my_section.json")
 ```
 
 **JSON Structure:**
-
-The JSON format preserves exact curve definitions (not just discretized points):
 
 ```json
 {
@@ -249,6 +268,28 @@ The JSON format preserves exact curve definitions (not just discretized points):
 }
 ```
 
-**Validation:**
+#### DXF Support
 
-The `from_dict()` and `from_json()` methods validate required fields and provide clear error messages if data is missing or invalid.
+You can import and export geometry from DXF files. This uses a built-in minimal parser (no external dependencies).
+
+**Supported Entities:**
+- `LINE`
+- `ARC`
+- `LWPOLYLINE` (Imported as linear segments)
+
+**Coordinate System Mapping:**
+- DXF X-axis maps to Section Y-axis
+- DXF Y-axis maps to Section Z-axis
+
+```python
+# Import from DXF
+geom = Geometry.from_dxf("drawing.dxf")
+
+# Export to DXF
+geom.to_dxf("output.dxf")
+```
+
+**Note:** The DXF importer performs a raw import of entities. Each entity becomes a separate contour unless it is a Polyline. 
+- A `LWPOLYLINE` in DXF becomes a single connected `Contour`.
+- Individual `LINE` and `ARC` entities become separate `Contour`s. 
+- To create a closed section from individual lines, you may need to manually process the contours or draw them as a closed Polyline in your CAD software.
