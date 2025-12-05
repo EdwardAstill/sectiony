@@ -26,3 +26,12 @@ Points are defined as tuples `(y, z)`.
 *   **My (Bending about Y)**: Positive vector points up (+y). Induces compression in +z fibers (Right side).
 *   **Mz (Bending about Z)**: Positive vector points right (+z). Induces compression in +y fibers (Top side).
 *   **Mx (Torsion)**: Positive vector points out of plane (+x).
+
+## DXF Coordinates
+
+When importing from or exporting to DXF, the library maps the coordinate systems to preserve the visual orientation of the section:
+
+*   **DXF X-axis** (Horizontal) $\leftrightarrow$ **Section z-axis** (Horizontal)
+*   **DXF Y-axis** (Vertical) $\leftrightarrow$ **Section y-axis** (Vertical)
+
+This mapping ensures that a cross-section drawn in the XY plane in CAD appears with the same orientation in **sectiony** plots and calculations.

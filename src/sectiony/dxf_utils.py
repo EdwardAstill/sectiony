@@ -87,7 +87,9 @@ def _process_entity(entity_type: str, data: Dict[int, List[Any]]) -> Optional[Co
             x2 = float(data.get(11, ['0'])[0])
             y2 = float(data.get(21, ['0'])[0])
             
-            line = Line(start=(x1, y1), end=(x2, y2))
+            # Swap x/y to map DXF(X,Y) -> Section(Y,Z)
+            # This ensures Plotter(Z,Y) shows DXF(X,Y) orientation
+            line = Line(start=(y1, x1), end=(y2, x2))
             return Contour(segments=[line], hollow=False)
             
         elif entity_type == 'ARC':
@@ -106,7 +108,8 @@ def _process_entity(entity_type: str, data: Dict[int, List[Any]]) -> Optional[Co
             if end_rad <= start_rad:
                 end_rad += 2 * math.pi
                 
-            arc = Arc(center=(cx, cy), radius=r, start_angle=start_rad, end_angle=end_rad)
+            # Swap cx/cy. Angles match because Arc 0 is +Z (DXF +X), 90 is +Y (DXF +Y)
+            arc = Arc(center=(cy, cx), radius=r, start_angle=start_rad, end_angle=end_rad)
             return Contour(segments=[arc], hollow=False)
             
         elif entity_type == 'LWPOLYLINE':
@@ -208,7 +211,8 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
                 elif c == 20: y1 = float(v)
                 elif c == 11: x2 = float(v)
                 elif c == 21: y2 = float(v)
-            return Contour(segments=[Line((x1, y1), (x2, y2))], hollow=False)
+            # Swap x/y
+            return Contour(segments=[Line((y1, x1), (y2, x2))], hollow=False)
             
         elif entity_type == 'ARC':
             cx = cy = r = start = end = 0.0
@@ -224,7 +228,8 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
             if end_rad <= start_rad:
                 end_rad += 2 * math.pi
             
-            return Contour(segments=[Arc((cx, cy), r, start_rad, end_rad)], hollow=False)
+            # Swap cx/cy
+            return Contour(segments=[Arc((cy, cx), r, start_rad, end_rad)], hollow=False)
             
         elif entity_type == 'LWPOLYLINE':
             # Need to process vertices in order
@@ -249,7 +254,8 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
                     # New vertex starts with x coord (usually)
                     # Push previous vertex if exists
                     if curr_x is not None and curr_y is not None:
-                        points.append((curr_x, curr_y))
+                        # Swap x/y
+                        points.append((curr_y, curr_x))
                         bulges.append(curr_bulge)
                     curr_x = float(v)
                     curr_y = None # Reset y
@@ -261,7 +267,8 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
             
             # Push last vertex
             if curr_x is not None and curr_y is not None:
-                points.append((curr_x, curr_y))
+                # Swap x/y
+                points.append((curr_y, curr_x))
                 bulges.append(curr_bulge)
                 
             if len(points) < 2:
@@ -605,147 +612,40 @@ def write_dxf(file_path: str, contours: List[Contour]) -> None:
 
 def _write_line(f, line: Line):
     f.write("0\nLINE\n8\n0\n")
-    f.write(f"10\n{line.start[0]}\n20\n{line.start[1]}\n")
-    f.write(f"11\n{line.end[0]}\n21\n{line.end[1]}\n")
+    # Swap x/y to map Section(Y,Z) -> DXF(X,Y)
+    # Section Y -> DXF Y
+    # Section Z -> DXF X
+    f.write(f"10\n{line.start[1]}\n20\n{line.start[0]}\n")
+    f.write(f"11\n{line.end[1]}\n21\n{line.end[0]}\n")
 
 def _write_arc(f, arc: Arc):
     # Convert Sectiony Arc (y, z, theta=0 is +z) to DXF Arc (x, y, theta=0 is +x)
     # Sectiony: y = cx + r*sin(t), z = cz + r*cos(t)
     # DXF: x = cx + r*cos(d), y = cy + r*sin(d)
     
-    # Mapping: DXF X = Sectiony Y, DXF Y = Sectiony Z
-    # x(t) = cy + r*sin(t)
-    # y(t) = cz + r*cos(t)
+    # Mapping: DXF X = Sectiony Z, DXF Y = Sectiony Y
+    # x(t) = cz + r*cos(t)  (Section Z -> DXF X)
+    # y(t) = cy + r*sin(t)  (Section Y -> DXF Y)
     
     # We need to find DXF angle 'd' such that:
-    # cx_dxf + r*cos(d) = cy_sect + r*sin(t)
-    # cy_dxf + r*sin(d) = cz_sect + r*cos(t)
-    # (Assuming centers match: cx_dxf = cy_sect, cy_dxf = cz_sect)
-    # cos(d) = sin(t) = cos(pi/2 - t)
-    # sin(d) = cos(t) = sin(pi/2 - t)
-    # So d = pi/2 - t
+    # cx_dxf + r*cos(d) = cz_sect + r*cos(t)
+    # cy_dxf + r*sin(d) = cy_sect + r*sin(t)
+    # (Assuming centers match: cx_dxf = cz_sect, cy_dxf = cy_sect)
+    # cos(d) = cos(t)
+    # sin(d) = sin(t)
+    # So d = t !
     
-    # DXF Angle = 90 - Sectiony Angle (in degrees)
+    # Angles match directly because Arc 0 (+Z) maps to DXF 0 (+X).
+    # And Arc 90 (+Y) maps to DXF 90 (+Y).
     
-    start_d = math.degrees(math.pi/2 - arc.start_angle)
-    end_d = math.degrees(math.pi/2 - arc.end_angle)
-    
-    # DXF arcs are always CCW from start to end.
-    # Sectiony arcs can be CW or CCW (start > end or start < end).
-    # If Sectiony arc is CW (start > end, decreasing t):
-    # d goes from (90-start) to (90-end).
-    # Since start > end, (90-start) < (90-end).
-    # So d increases. This matches DXF CCW.
-    # So we just use converted angles.
-    
-    # If Sectiony arc is CCW (start < end, increasing t):
-    # d goes from (90-start) to (90-end).
-    # (90-start) > (90-end).
-    # So d decreases. DXF requires CCW (increasing d).
-    # So we need to swap start/end? 
-    # No, an arc from A to B is the set of points.
-    # If Sectiony traces A->B CCW, DXF must trace A->B CCW?
-    # Wait, coordinate system handedness might be flipped.
-    # Sectiony (Y, Z). Y=Right, Z=Up.
-    # DXF (X, Y). X=Right, Y=Up.
-    # They are the same handedness.
-    # Rotation 0->90 is CCW in both.
-    # Sectiony: 0(+Z) -> pi/2(+Y). This is CW! (Up to Right).
-    # DXF: 0(+X) -> 90(+Y). This is CCW! (Right to Up).
-    # So Sectiony angle definition is CW relative to standard math.
-    # Sectiony: t increases => CW.
-    # DXF: d increases => CCW.
-    
-    # So if Sectiony goes A->B with increasing t (CW), 
-    # DXF must go A->B. Since A->B is CW movement, and DXF only supports CCW definition (start to end),
-    # we can't represent a CW arc directly as start->end?
-    # DXF Arc is defined by center, radius, start_angle, end_angle.
-    # It draws CCW from start to end.
-    # If we want CW from A to B, we have to specify start=B, end=A?
-    # But that reverses the visual arc? No, it draws the OTHER segment (the long way or short way).
-    # Actually, DXF Arc is always the CCW path.
-    # If our geometry is "Short arc from A to B", and A->B is CW.
-    # Then in DXF (CCW world), it is B->A.
-    # But we want the visual representation.
-    # So we should output start=Angle(B), end=Angle(A).
-    
-    # Let's check:
-    # Sectiony Arc: start=0 (+Z), end=pi/2 (+Y). 
-    # Path: Up -> Right (Quarter circle, Top-Right quadrant).
-    # In DXF coords: (0, r) -> (r, 0).
-    # DXF Angle of (0,r) is 90.
-    # DXF Angle of (r,0) is 0.
-    # We want arc connecting 90 and 0.
-    # DXF draws CCW. 
-    # 0 -> 90 draws Top-Right quadrant.
-    # 90 -> 0 draws Top-Left + Bottom + Bottom-Right (3/4 circle).
-    # We want Top-Right.
-    # So we must specify start=0, end=90.
-    # This corresponds to Sectiony end=pi/2, start=0.
-    # So DXF start = convert(Sectiony end).
-    # DXF end = convert(Sectiony start).
-    
-    # What if Sectiony Arc was start=pi/2, end=0? (Right -> Up, CCW, t decreases).
-    # Path is same: Top-Right quadrant.
-    # So we still want DXF 0->90.
-    # convert(start) = convert(pi/2) = 0.
-    # convert(end) = convert(0) = 90.
-    # So DXF start = convert(start), DXF end = convert(end).
-    
-    # Wait, my conversion formula was d = 90 - t_deg.
-    # t=0 -> d=90.
-    # t=pi/2 -> d=0.
-    # Case 1 (CW): start=0, end=pi/2.
-    # d_start = 90, d_end = 0.
-    # We want result 0->90.
-    # So we need to swap.
-    
-    # Case 2 (CCW): start=pi/2, end=0.
-    # d_start = 0, d_end = 90.
-    # We want result 0->90.
-    # So we use as is?
-    
-    # It seems to depend on direction.
-    # BUT, `Arc` object just defines geometry. Direction of definition might matter for `Contour` connectivity.
-    # But for just showing the shape, an arc from A to B is the same as B to A?
-    # NO, it implies direction for the contour.
-    # However, DXF ARC entity doesn't have direction. It's just a shape.
-    # POLYLINE has vertex order.
-    # If we convert to ARC entity, we lose "direction" in the sense that DXF ARC is always CCW.
-    # But visually it is the same pixels.
-    # UNLESS we are converting back to Contour later and expect direction to be preserved?
-    # If we export to DXF and import back, we might flip direction if we blindly map.
-    # But for "to_dxf", we likely just want to view it in CAD.
-    # CAD usually handles it fine.
-    # So, just ensure the arc spans the correct angular sector.
-    
-    # Logic: normalize angles to 0-360.
-    # If we want the small arc, ensure diff is < 180?
-    # Actually, Sectiony Arc has start and end. It handles > 180 arcs.
-    # We should calculate d1 = 90 - start, d2 = 90 - end.
-    # We want the arc that corresponds to the interval [start, end] (in t-space).
-    # Since t maps to d via d = 90 - t (which reverses orientation),
-    # the interval [start, end] maps to [d_end, d_start] (swapped).
-    # So DXF start = d_end, DXF end = d_start.
-    
-    d_start_raw = 90.0 - math.degrees(arc.start_angle)
-    d_end_raw = 90.0 - math.degrees(arc.end_angle)
-    
-    # Swap because of orientation reversal
-    dxf_start = d_end_raw
-    dxf_end = d_start_raw
-    
-    # Normalize to 0-360?
-    # DXF usually expects normalized?
-    # E.g. 0 to 90.
-    # If we have -90 to 0 -> 270 to 360? or 270 to 0?
-    # ezdxf normalizes.
-    # Let's write normalized.
+    start_d = math.degrees(arc.start_angle)
+    end_d = math.degrees(arc.end_angle)
     
     f.write("0\nARC\n8\n0\n")
-    f.write(f"10\n{arc.center[0]}\n20\n{arc.center[1]}\n")
+    # Center: cx_dxf = cz, cy_dxf = cy
+    f.write(f"10\n{arc.center[1]}\n20\n{arc.center[0]}\n")
     f.write(f"40\n{arc.radius}\n")
-    f.write(f"50\n{dxf_start}\n")
-    f.write(f"51\n{dxf_end}\n")
+    f.write(f"50\n{start_d}\n")
+    f.write(f"51\n{end_d}\n")
 
 

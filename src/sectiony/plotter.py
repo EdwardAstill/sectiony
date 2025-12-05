@@ -236,7 +236,7 @@ def plot_section(
     ax.set_xlabel('z')
     ax.set_ylabel('y', rotation=0)
     ax.set_title(f"Section: {section.name}")
-    ax.grid(True, linestyle=':', alpha=0.6)
+    ax.grid(False)
 
     if show:
         plt.show()

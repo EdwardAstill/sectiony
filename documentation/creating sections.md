@@ -222,7 +222,82 @@ geom = Geometry(contours=[contour])
 triangle_section = Section(name="Triangle", geometry=geom)
 ```
 
-## 3. Importing and Exporting
+## 3. Discretizing Geometry
+
+When working with sections, you may need to convert the continuous curve definitions (lines, arcs, Bezier curves) into discrete points. **sectiony** provides two methods for discretization:
+
+### Standard Discretization (`discretize`)
+
+The `discretize` method on segments and contours converts curves into points based on a resolution parameter. This method respects the original curve structure:
+
+- **Lines**: Split into the specified number of segments
+- **Arcs**: Points distributed based on arc span (more points for longer arcs)
+- **Bezier curves**: Points distributed evenly along the curve parameter
+
+```python
+from sectiony import Line, Arc, Contour
+import math
+
+# Discretize a line into 10 segments (11 points)
+line = Line(start=(0, 0), end=(10, 0))
+line_points = line.discretize(resolution=10)
+# Returns: [(0,0), (1,0), (2,0), ..., (10,0)]
+
+# Discretize an arc
+arc = Arc(center=(0, 0), radius=10.0, start_angle=0, end_angle=math.pi/2)
+arc_points = arc.discretize(resolution=32)
+
+# Discretize an entire contour
+contour = Contour(segments=[line, arc])
+contour_points = contour.discretize(resolution=32)
+```
+
+### Uniform Discretization (`discretize_uniform`)
+
+The `discretize_uniform` method resamples the entire shape into segments of **equal length**. This is particularly useful when you need consistent spacing along the entire perimeter, regardless of the original segment sizes or types.
+
+**Key features:**
+- All discretized segments have the same length
+- Works across multiple segments (lines, arcs, curves)
+- Straight lines are split into smaller segments just like curves
+- Useful for stress analysis, weld calculations, and uniform sampling
+
+```python
+from sectiony import Section, Geometry, Contour, Line, Arc
+import math
+
+# Create a section with mixed segments
+line1 = Line(start=(0, 0), end=(10, 0))      # Length: 10
+line2 = Line(start=(10, 0), end=(10, 5))      # Length: 5
+arc = Arc(center=(10, 5), radius=5.0, start_angle=math.pi/2, end_angle=math.pi)
+contour = Contour(segments=[line1, line2, arc])
+geom = Geometry(contours=[contour])
+section = Section(name="Mixed", geometry=geom)
+
+# Discretize into 100 equally-spaced points
+points_with_hollow = section.discretize_uniform(count=100)
+# Returns: List of (points_list, is_hollow) tuples
+# Each points_list contains 100 points equally spaced along the contour
+
+# Access the points for the first contour
+points, is_hollow = points_with_hollow[0]
+print(f"Number of points: {len(points)}")
+print(f"Is hollow: {is_hollow}")
+
+# You can also discretize Geometry or Contour directly
+contour_points = contour.discretize_uniform(count=100)
+geometry_points = geom.discretize_uniform(count=100)
+```
+
+**Use Cases:**
+
+- **Weld Analysis**: When analyzing welds along a section perimeter, uniform discretization ensures consistent stress sampling points
+- **Stress Distribution**: For plotting stress distributions, uniform spacing provides cleaner visualizations
+- **Integration**: When performing numerical integration along the perimeter, equal segment lengths simplify calculations
+
+**Note:** The `discretize_uniform` method calculates the total length of all segments and distributes points evenly along the entire path. For closed contours, the last point will connect back to the first point.
+
+## 4. Importing and Exporting
 
 You can save your sections to JSON or import geometry from DXF files. See the [Import and Export](import_export.md) documentation for full details on file formats and CAD integration.
 

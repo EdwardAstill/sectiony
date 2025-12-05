@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union, Dict, Any
+from typing import List, Tuple, Union, Dict, Any, TYPE_CHECKING
 import math
 import json
 import warnings
@@ -19,8 +19,32 @@ class Line:
     end: Point
 
     def discretize(self, resolution: int = 32) -> List[Point]:
-        """Return start and end points (lines don't need intermediate points)."""
-        return [self.start, self.end]
+        """
+        Return discretized points along the line.
+        
+        Args:
+            resolution: Number of segments to split the line into.
+        """
+        if resolution < 1:
+            resolution = 1
+            
+        points = []
+        for i in range(resolution + 1):
+            t = i / resolution
+            points.append(self.point_at(t))
+        return points
+
+    def point_at(self, t: float) -> Point:
+        """Get point at parameter t (0.0 to 1.0)."""
+        return (
+            self.start[0] + (self.end[0] - self.start[0]) * t,
+            self.start[1] + (self.end[1] - self.start[1]) * t
+        )
+
+    @property
+    def length(self) -> float:
+        """Length of the line segment."""
+        return math.hypot(self.end[0] - self.start[0], self.end[1] - self.start[1])
 
     def start_point(self) -> Point:
         return self.start
@@ -66,8 +90,23 @@ class Arc:
         
         # Determine number of points based on arc span
         angle_span = abs(self.end_angle - self.start_angle)
+        # Ensure at least 'resolution' points for a full circle, scaled by span
+        # But if resolution is treated as 'segments per curve', we might want to just use it.
+        # Existing logic scaled it. Let's keep the scaling but ensure minimum density.
         n = max(2, int(resolution * angle_span / (2 * math.pi)))
+        # If the user specifically asks for high resolution, we should probably honor it more directly
+        # effectively resolution here acts as "points per full circle"
         
+        # Let's trust the user passed resolution as "number of segments" if they called it directly?
+        # The Weld class calls it with 'discretization' (default 100).
+        # If we use the old formula, for a small arc, n is small.
+        # If we want "split up into many small lines", we might want to use resolution as count.
+        
+        # New logic: Use resolution as the number of segments for this arc directly, 
+        # unless it's huge relative to the angle.
+        # But for backward compatibility with 'resolution' meaning 'density', let's stick to a safe max.
+        n = max(n, resolution) 
+
         points = []
         cy, cz = self.center
         for i in range(n + 1):
@@ -76,6 +115,19 @@ class Arc:
             z = cz + self.radius * math.cos(theta)
             points.append((y, z))
         return points
+
+    def point_at(self, t: float) -> Point:
+        """Get point at parameter t (0.0 to 1.0)."""
+        theta = self.start_angle + (self.end_angle - self.start_angle) * t
+        cy, cz = self.center
+        y = cy + self.radius * math.sin(theta)
+        z = cz + self.radius * math.cos(theta)
+        return (y, z)
+
+    @property
+    def length(self) -> float:
+        """Length of the arc."""
+        return self.radius * abs(self.end_angle - self.start_angle)
 
     def start_point(self) -> Point:
         cy, cz = self.center
@@ -192,6 +244,23 @@ class CubicBezier:
             points.append(point)
         return points
 
+    def point_at(self, t: float) -> Point:
+        """Get point at parameter t (0.0 to 1.0)."""
+        return self._evaluate(t)
+
+    @property
+    def length(self) -> float:
+        """Approximate length of the Bezier curve."""
+        # Use discretization to approximate length
+        # A resolution of 32 is usually sufficient for a good approximation
+        points = self.discretize(32)
+        length = 0.0
+        for i in range(len(points) - 1):
+            p1 = points[i]
+            p2 = points[i+1]
+            length += math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        return length
+
     def _evaluate(self, t: float) -> Point:
         """Evaluate bezier at parameter t using de Casteljau."""
         u = 1 - t
@@ -258,6 +327,11 @@ class Contour:
         end = self.segments[-1].end_point()
         
         return self._points_equal(start, end)
+    
+    @property
+    def length(self) -> float:
+        """Total length of the contour."""
+        return sum(s.length for s in self.segments)
 
     def discretize(self, resolution: int = 32) -> List[Point]:
         """Convert all segments to a single list of points."""
@@ -277,6 +351,67 @@ class Contour:
         if len(points) > 1 and self._points_equal(points[0], points[-1]):
             points = points[:-1]
         
+        return points
+    
+    def discretize_uniform(self, count: int = 100) -> List[Point]:
+        """
+        Discretize the contour into a fixed number of equally spaced points.
+        
+        Args:
+            count: Number of points to generate.
+            
+        Returns:
+            List of points equally spaced along the contour.
+        """
+        if not self.segments:
+            return []
+            
+        total_length = self.length
+        if total_length < 1e-9:
+            return [self.segments[0].start_point()] * count
+            
+        points: List[Point] = []
+        
+        # We want 'count' points.
+        # If closed, we might want the last point to match the first, 
+        # but typically 'discretize' implies unique points for closed loops 
+        # or inclusive of end for open.
+        # If it's a closed loop, we usually want N points representing N segments.
+        # If open, N points represent N-1 segments.
+        # Let's assume inclusive of start and end for open, 
+        # and start==end for closed (so returned list has duplicate start/end).
+        
+        step = total_length / max(1, count - 1) if not self.is_closed else total_length / count
+        
+        current_dist = 0.0
+        accumulated_len = 0.0
+        
+        current_seg_idx = 0
+        
+        # Start with the first point
+        points.append(self.segments[0].start_point())
+        
+        for i in range(1, count):
+            target_dist = i * step
+            
+            # Find which segment contains the target distance
+            while current_seg_idx < len(self.segments):
+                seg = self.segments[current_seg_idx]
+                seg_len = seg.length
+                
+                if accumulated_len + seg_len >= target_dist - 1e-9:
+                    # Point is in this segment
+                    local_dist = target_dist - accumulated_len
+                    t = local_dist / seg_len if seg_len > 1e-9 else 0.0
+                    points.append(seg.point_at(max(0.0, min(1.0, t))))
+                    break
+                else:
+                    accumulated_len += seg_len
+                    current_seg_idx += 1
+            else:
+                # If we ran past the end (floating point errors), assume last point
+                points.append(self.segments[-1].end_point())
+                
         return points
 
     def _points_equal(self, p1: Point, p2: Point, tol: float = 1e-4) -> bool:
@@ -350,6 +485,18 @@ class Geometry:
             List of (points, hollow) tuples for each contour.
         """
         return [(c.discretize(resolution), c.hollow) for c in self.contours]
+    
+    def discretize_uniform(self, count: int = 100) -> List[Tuple[List[Point], bool]]:
+        """
+        Get uniformly discretized points for each contour.
+        
+        Args:
+            count: Number of points per contour.
+            
+        Returns:
+            List of (points, hollow) tuples.
+        """
+        return [(c.discretize_uniform(count), c.hollow) for c in self.contours]
 
     def reduce_hollows(self) -> List[Tuple[List[Point], bool]]:
         """

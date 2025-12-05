@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List, Tuple
 from .geometry import Geometry
 from .properties import SectionProperties
 
@@ -41,6 +41,20 @@ class Section:
         """
         from .stress import Stress
         return Stress(self, N=N, Vy=Vy, Vz=Vz, Mx=Mx, My=My, Mz=Mz)
+
+    def discretize_uniform(self, count: int = 100) -> List[Tuple[List[Tuple[float, float]], bool]]:
+        """
+        Get uniformly discretized points for the section geometry.
+        
+        Args:
+            count: Number of points per contour.
+            
+        Returns:
+            List of (points, hollow) tuples.
+        """
+        if self.geometry is None:
+            return []
+        return self.geometry.discretize_uniform(count)
 
     def __post_init__(self):
         if self.geometry:

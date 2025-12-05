@@ -290,7 +290,7 @@ class Stress:
         # Plot contours
         contour_plot = ax.contourf(Z, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
         display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
-        plt.colorbar(contour_plot, ax=ax, label=display_name)
+        colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
 
         # Draw outlines on top to hide jagged edges
         self._draw_outlines(ax)

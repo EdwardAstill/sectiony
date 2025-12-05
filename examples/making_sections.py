@@ -24,9 +24,9 @@ from sectiony.library import chs, rhs, i, u
 
 
 # Setup output directories
-EXAMPLES_DIR = Path(__file__).parent
-GALLERY_DIR = EXAMPLES_DIR / "gallery"
-JSON_DIR = EXAMPLES_DIR / "json"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+GALLERY_DIR = ROOT_DIR / "gallery"
+JSON_DIR = ROOT_DIR / "jsons"
 
 # Create directories if they don't exist
 GALLERY_DIR.mkdir(exist_ok=True)
