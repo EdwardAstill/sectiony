@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "contours": [
+    {
+      "segments": [
+        {
+          "type": "line",
+          "start": [
+            50,
+            0
+          ],
+          "end": [
+            -50,
+            0
+          ]
+        },
+        {
+          "type": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 50.0,
+          "start_angle": 4.71238898038469,
+          "end_angle": 7.853981633974483
+        }
+      ],
+      "hollow": false
+    }
+  ]
+}

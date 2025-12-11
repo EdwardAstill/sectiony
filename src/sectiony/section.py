@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List, Tuple, Dict
 from .geometry import Geometry
 from .properties import SectionProperties
 
@@ -26,7 +26,11 @@ class Section:
     z_max: Optional[float] = None
     Zpl_y: Optional[float] = None
     Zpl_z: Optional[float] = None
+    Cw: Optional[float] = None  # Warping constant
+    SCy: Optional[float] = None  # Shear center y-coordinate
+    SCz: Optional[float] = None  # Shear center z-coordinate
     geometry: Optional[Geometry] = None
+    dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
     def plot(self, ax=None, show=True):
         """Plot the section geometry."""
@@ -40,9 +44,32 @@ class Section:
         from .stress import Stress
         return Stress(self, N=N, Vy=Vy, Vz=Vz, Mx=Mx, My=My, Mz=Mz)
 
+    def discretize_uniform(self, count: int = 100) -> List[Tuple[List[Tuple[float, float]], bool]]:
+        """
+        Get uniformly discretized points for the section geometry.
+        
+        Args:
+            count: Number of points per contour.
+            
+        Returns:
+            List of (points, hollow) tuples.
+        """
+        if self.geometry is None:
+            return []
+        return self.geometry.discretize_uniform(count)
+
     def __post_init__(self):
-        if self.geometry and self.A is None:
-            self._apply_properties_from_geometry()
+        if self.geometry:
+            # Validate that geometry consists of closed contours
+            if not self.geometry.is_closed:
+                raise ValueError(
+                    "Section geometry must consist of closed contours. "
+                    "Geometry objects can contain open contours for manipulation, "
+                    "but a Section requires closed loops to calculate properties."
+                )
+            
+            if self.A is None:
+                self._apply_properties_from_geometry()
         
         if self.A is None:
             raise ValueError("Section properties must be provided if geometry is not.")
@@ -64,3 +91,6 @@ class Section:
         self.z_max = props.z_max
         self.Zpl_y = props.Zpl_y
         self.Zpl_z = props.Zpl_z
+        self.Cw = props.Cw
+        self.SCy = props.SCy
+        self.SCz = props.SCz

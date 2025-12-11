@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "contours": [
+    {
+      "segments": [
+        {
+          "type": "line",
+          "start": [
+            50,
+            30
+          ],
+          "end": [
+            50,
+            -30
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            50,
+            -30
+          ],
+          "end": [
+            -50,
+            -30
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            -50,
+            -30
+          ],
+          "end": [
+            -50,
+            30
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            -50,
+            30
+          ],
+          "end": [
+            50,
+            30
+          ]
+        }
+      ],
+      "hollow": false
+    },
+    {
+      "segments": [
+        {
+          "type": "line",
+          "start": [
+            30,
+            20
+          ],
+          "end": [
+            30,
+            -20
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            30,
+            -20
+          ],
+          "end": [
+            -30,
+            -20
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            -30,
+            -20
+          ],
+          "end": [
+            -30,
+            20
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            -30,
+            20
+          ],
+          "end": [
+            30,
+            20
+          ]
+        }
+      ],
+      "hollow": true
+    }
+  ]
+}

@@ -1,239 +1,310 @@
 from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.tri as tri
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING, Literal
+from typing import Optional, TYPE_CHECKING, Literal, Callable, List, Tuple
 
 if TYPE_CHECKING:
     from .section import Section
+    from .geometry import Contour
+
+# Type alias for stress calculation function
+StressFunc = Callable[[float, float], float]
+
+# Type alias for points
+Point = Tuple[float, float]
+
+# Supported stress types
+StressType = Literal["sigma", "sigma_axial", "sigma_bending", "tau", "tau_shear", "tau_torsion", "von_mises"]
+
+# Plot configuration
+_PLOT_RESOLUTION = 200  # Increased resolution
+_PLOT_PADDING_FACTOR = 0.1
+_CONTOUR_LEVELS = 20
+
+# Display names for stress types
+_STRESS_DISPLAY_NAMES: dict[str, str] = {
+    "sigma": "σ",
+    "sigma_axial": "σ (axial)",
+    "sigma_bending": "σ (bending)",
+    "tau": "τ",
+    "tau_shear": "τ (shear)",
+    "tau_torsion": "τ (torsion)",
+    "von_mises": "Von Mises",
+}
+
 
 @dataclass
 class Stress:
     """
     Calculates and visualizes stress distribution on a cross-section
     for a given set of internal forces.
+    
+    Attributes:
+        section: The Section object containing geometry and properties.
+        N: Axial force (positive = tension).
+        Vy: Shear force in Y direction (vertical).
+        Vz: Shear force in Z direction (horizontal).
+        Mx: Torsional moment about X axis.
+        My: Bending moment about Y axis (bending in X-Z plane).
+        Mz: Bending moment about Z axis (bending in X-Y plane).
     """
     section: Section
-    N: float = 0.0   # Axial Force
-    Vy: float = 0.0  # Shear Force in Y (Vertical)
-    Vz: float = 0.0  # Shear Force in Z (Horizontal)
-    Mx: float = 0.0  # Torsional Moment (T)
-    My: float = 0.0  # Bending Moment about Y axis (Bending in X-Z plane)
-    Mz: float = 0.0  # Bending Moment about Z axis (Bending in X-Y plane)
+    N: float = 0.0
+    Vy: float = 0.0
+    Vz: float = 0.0
+    Mx: float = 0.0
+    My: float = 0.0
+    Mz: float = 0.0
 
     def sigma_axial(self, y: float, z: float) -> float:
-        """Calculates normal stress due to axial force (N/A)."""
-        if self.section.A is None or self.section.A == 0:
+        """Normal stress due to axial force: σ = N/A."""
+        if not self.section.A:
             return 0.0
         return self.N / self.section.A
 
     def sigma_bending(self, y: float, z: float) -> float:
         """
-        Calculates normal stress due to bending moments.
-        Formula: sigma = (My * z) / Iy - (Mz * y) / Iz
-        Assumes local coordinate system where y is vertical, z is horizontal,
-        and origin is at the centroid.
+        Normal stress due to bending moments.
+        
+        Formula: σ = (My * z) / Iy - (Mz * y) / Iz
+        
+        Sign convention: positive Mz compresses positive y fibers.
         """
         sigma = 0.0
-        if self.section.Iy and self.section.Iy != 0:
+        if self.section.Iy:
             sigma += (self.My * z) / self.section.Iy
-        if self.section.Iz and self.section.Iz != 0:
-            # Standard beam convention: positive Mz compresses positive y (top fibers)
-            # Hence the minus sign.
+        if self.section.Iz:
             sigma -= (self.Mz * y) / self.section.Iz
         return sigma
 
     def sigma(self, y: float, z: float) -> float:
-        """Total normal stress: sigma_axial + sigma_bending."""
+        """Total normal stress: σ_axial + σ_bending."""
         return self.sigma_axial(y, z) + self.sigma_bending(y, z)
 
     def tau_shear(self, y: float, z: float) -> float:
         """
-        Calculates shear stress magnitude due to transverse shear forces (Vy, Vz).
+        Shear stress due to transverse shear forces (Vy, Vz).
         
-        NOTE: This is a simplified placeholder. Accurate shear stress distribution
-        requires numerical integration (shear flow) or FEA.
-        
-        Current approximation: Average shear stress (V/A).
+        NOTE: Approximate average shear stress (V/A).
+        Accurate distribution requires shear flow analysis.
         """
-        if self.section.A is None or self.section.A == 0:
+        if not self.section.A:
             return 0.0
-        
-        # Very rough approximation for now
         tau_y = self.Vy / self.section.A
         tau_z = self.Vz / self.section.A
         return np.sqrt(tau_y**2 + tau_z**2)
 
     def tau_torsion(self, y: float, z: float) -> float:
         """
-        Calculates shear stress due to torsion (Mx).
+        Shear stress due to torsion (Mx).
         
-        NOTE: This is a simplified placeholder. Accurate torsional stress
-        requires solving Poisson's equation.
-        
-        Current approximation: Max shear stress on outer boundary for a circular section
-        tau = Tr/J, scaled by distance from centroid.
+        NOTE: Approximate using τ = Mx * r / J.
+        Accurate distribution requires solving Poisson's equation.
         """
-        if self.section.J is None or self.section.J == 0:
+        if not self.section.J:
             return 0.0
-        
         r = np.sqrt(y**2 + z**2)
-        # T * r / J
         return abs(self.Mx * r / self.section.J)
 
     def tau(self, y: float, z: float) -> float:
-        """Total shear stress magnitude estimate."""
-        # Conservative addition of magnitudes (worst case alignment)
-        # In reality, these are vectors and should be added vectorially.
+        """Total shear stress magnitude (conservative sum)."""
         return self.tau_shear(y, z) + self.tau_torsion(y, z)
 
     def von_mises(self, y: float, z: float) -> float:
-        """Calculates Von Mises yield criterion: sqrt(sigma^2 + 3*tau^2)."""
+        """Von Mises equivalent stress: √(σ² + 3τ²)."""
         s = self.sigma(y, z)
         t = self.tau(y, z)
         return np.sqrt(s**2 + 3 * t**2)
 
-    def _get_stress_func(self, type: str):
-        if type == "sigma": return self.sigma
-        if type == "sigma_axial": return self.sigma_axial
-        if type == "sigma_bending": return self.sigma_bending
-        if type == "tau": return self.tau
-        if type == "von_mises": return self.von_mises
-        raise ValueError(f"Unknown stress type: {type}")
+    def get_stress_func(self, stress_type: StressType) -> StressFunc:
+        """Get the stress calculation function for a given type."""
+        funcs: dict[str, StressFunc] = {
+            "sigma": self.sigma,
+            "sigma_axial": self.sigma_axial,
+            "sigma_bending": self.sigma_bending,
+            "tau": self.tau,
+            "tau_shear": self.tau_shear,
+            "tau_torsion": self.tau_torsion,
+            "von_mises": self.von_mises,
+        }
+        if stress_type not in funcs:
+            valid = ", ".join(funcs.keys())
+            raise ValueError(f"Unknown stress type: {stress_type}. Valid types: {valid}")
+        return funcs[stress_type]
 
-    def max(self, type: str = "von_mises") -> float:
-        """Returns the maximum value of the specified stress component over the geometry."""
-        # Sampling points on the geometry boundary + mesh
-        # For now, let's just sample vertices of the geometry shapes
+    def _get_all_points(self) -> List[Point]:
+        """Get all discretized points from geometry for stress calculations."""
         if not self.section.geometry:
+            return []
+        points: List[Point] = []
+        for contour in self.section.geometry.contours:
+            points.extend(contour.discretize())
+        return points
+
+    def max(self, stress_type: StressType = "von_mises") -> float:
+        """Maximum stress value over geometry vertices."""
+        points = self._get_all_points()
+        if not points:
             return 0.0
-            
-        func = self._get_stress_func(type)
-        max_val = -float('inf')
-        
-        for shape in self.section.geometry.shapes:
-            for y, z in shape.points: # Points are (y, z)
-                # Note: inputs to funcs are (y, z), points are (y, z)
-                val = func(y, z)
-                if val > max_val:
-                    max_val = val
-        return max_val
+        func = self.get_stress_func(stress_type)
+        return max(func(y, z) for y, z in points)
 
-    def min(self, type: str = "von_mises") -> float:
-        """Returns the minimum value of the specified stress component."""
-        if not self.section.geometry:
+    def min(self, stress_type: StressType = "von_mises") -> float:
+        """Minimum stress value over geometry vertices."""
+        points = self._get_all_points()
+        if not points:
             return 0.0
-            
-        func = self._get_stress_func(type)
-        min_val = float('inf')
-        
-        for shape in self.section.geometry.shapes:
-            for y, z in shape.points:
-                val = func(y, z)
-                if val < min_val:
-                    min_val = val
-        return min_val
+        func = self.get_stress_func(stress_type)
+        return min(func(y, z) for y, z in points)
 
-    def plot(self, type: str = "von_mises", ax: Optional[plt.Axes] = None, show: bool = True):
-        """
-        Generates a contour plot of the specified stress component over the section geometry.
-        """
-        if not self.section.geometry:
-            print("No geometry to plot.")
-            return
+    def at(self, y: float, z: float, stress_type: StressType = "von_mises") -> float:
+        """Calculate stress at a specific point."""
+        return self.get_stress_func(stress_type)(y, z)
 
-        if ax is None:
-            fig, ax = plt.subplots()
-        
-        func = self._get_stress_func(type)
-        
-        # Triangulate the polygon for plotting
-        # Simple ear clipping or relying on matplotlib's triangulation might be needed
-        # For now, we'll create a mesh grid over the bounding box and mask it
-        
-        # 1. Determine bounding box
-        all_ys = []
-        all_zs = []
-        for s in self.section.geometry.shapes:
-            all_ys.extend(p[0] for p in s.points)
-            all_zs.extend(p[1] for p in s.points)
-            
-        if not all_ys: return
-        
-        min_y, max_y = min(all_ys), max(all_ys)
-        min_z, max_z = min(all_zs), max(all_zs)
-        
-        padding = max(max_y - min_y, max_z - min_z) * 0.1
-        if padding == 0: padding = 1.0
-        
-        # Create grid
-        resolution = 100
-        z_grid = np.linspace(min_z - padding, max_z + padding, resolution)
-        y_grid = np.linspace(min_y - padding, max_y + padding, resolution)
-        Z, Y = np.meshgrid(z_grid, y_grid)
-        
-        # Calculate stress on grid
-        # Vectorized calculation would be better, but loop is safer for arbitrary functions
-        S = np.zeros_like(Z)
-        for i in range(Z.shape[0]):
-            for j in range(Z.shape[1]):
-                S[i, j] = func(Y[i, j], Z[i, j])
-                
-        # Mask points outside the polygon
-        from matplotlib.path import Path
-        
-        mask = np.ones_like(Z, dtype=bool)
-        
-        # Generally we want to include points inside solids and exclude holes
-        # Simplistic approach: Check if inside any solid and not inside any hole
-        solids = [s for s in self.section.geometry.shapes if not s.hollow]
-        hollows = [s for s in self.section.geometry.shapes if s.hollow]
-        
+    def _compute_bounds(self) -> Tuple[float, float, float, float]:
+        """Compute bounding box of geometry."""
+        all_ys: List[float] = []
+        all_zs: List[float] = []
+        for contour in self.section.geometry.contours:
+            for y, z in contour.discretize():
+                all_ys.append(y)
+                all_zs.append(z)
+        return min(all_ys), max(all_ys), min(all_zs), max(all_zs)
+
+    def _create_mask(self, Y: np.ndarray, Z: np.ndarray) -> np.ndarray:
+        """
+        Create mask for points inside solid regions but outside hollow regions.
+        Uses Path.contains_points which is accurate for arbitrary polygons.
+        """
         points_flat = np.column_stack((Y.flatten(), Z.flatten()))
         
-        # Check solids (union)
+        solids = [c for c in self.section.geometry.contours if not c.hollow]
+        hollows = [c for c in self.section.geometry.contours if c.hollow]
+        
         is_in_solid = np.zeros(len(points_flat), dtype=bool)
         for solid in solids:
-            # path expects (x, y) -> (z, y) for us? 
-            # Wait, Path.contains_points expects points matching the vertices.
-            # Our vertices are (y, z). Our points are (y, z).
-            path = Path(solid.points) 
-            is_in_solid |= path.contains_points(points_flat)
-            
-        # Check hollows (subtraction)
+            # Create Path from discretized points
+            pts = solid.discretize()
+            if len(pts) >= 3:
+                path = Path(pts)
+                is_in_solid |= path.contains_points(points_flat)
+        
         is_in_hollow = np.zeros(len(points_flat), dtype=bool)
         for hollow in hollows:
-            path = Path(hollow.points)
-            is_in_hollow |= path.contains_points(points_flat)
+            pts = hollow.discretize()
+            if len(pts) >= 3:
+                path = Path(pts)
+                is_in_hollow |= path.contains_points(points_flat)
+        
+        return (is_in_solid & ~is_in_hollow).reshape(Y.shape)
+
+    def _draw_outlines(self, ax: plt.Axes) -> None:
+        """
+        Draw contour outlines on the plot using high-quality paths.
+        Uses shared path conversion from plotter module.
+        Hollows are clipped to only show the parts that intersect with solids.
+        """
+        from .plotter import contour_to_path, points_to_path, _clip_hollow_to_solids
+        
+        solids = [c for c in self.section.geometry.contours if not c.hollow]
+        hollows = [c for c in self.section.geometry.contours if c.hollow]
+        
+        # Draw solids
+        for contour in solids:
+            path = contour_to_path(contour)
+            if path is None:
+                continue
+            patch = PathPatch(path, facecolor='none', edgecolor='black', 
+                              linewidth=1.5)
+            ax.add_patch(patch)
             
-        final_mask = is_in_solid & (~is_in_hollow)
+        # Draw hollows - clipped to solid regions
+        for contour in hollows:
+            hollow_points = contour.discretize()
+            if len(hollow_points) < 3:
+                continue
+            
+            # Clip hollow to solid regions
+            clipped_regions = _clip_hollow_to_solids(hollow_points, solids)
+            
+            for clipped_points in clipped_regions:
+                path = points_to_path(clipped_points)
+                if path is None:
+                    continue
+                patch = PathPatch(path, facecolor='none', edgecolor='black',
+                                 linestyle='--', linewidth=1.0)
+                ax.add_patch(patch)
+
+    def plot(
+        self,
+        stress_type: StressType = "von_mises",
+        ax: Optional[plt.Axes] = None,
+        show: bool = True,
+        cmap: str = "viridis",
+    ) -> Optional[plt.Axes]:
+        """
+        Generate a contour plot of stress distribution.
         
-        # Apply mask (NaN out invalid points)
-        S_flat = S.flatten()
-        S_flat[~final_mask] = np.nan
-        S = S_flat.reshape(S.shape)
+        Args:
+            stress_type: Type of stress to plot.
+            ax: Matplotlib axes (creates new if None).
+            show: Whether to display the plot.
+            cmap: Colormap name.
+            
+        Returns:
+            The axes object, or None if no geometry.
+        """
+        if not self.section.geometry:
+            return None
+
+        if ax is None:
+            _, ax = plt.subplots()
+
+        func = self.get_stress_func(stress_type)
         
+        # Compute grid bounds
+        min_y, max_y, min_z, max_z = self._compute_bounds()
+        
+        # Add a small buffer to ensure we cover the edges
+        dz = max_z - min_z
+        dy = max_y - min_y
+        padding = max(dz, dy) * _PLOT_PADDING_FACTOR
+        if padding == 0:
+            padding = 1.0
+        
+        # Create evaluation grid with higher resolution
+        z_grid = np.linspace(min_z - padding, max_z + padding, _PLOT_RESOLUTION)
+        y_grid = np.linspace(min_y - padding, max_y + padding, _PLOT_RESOLUTION)
+        Z, Y = np.meshgrid(z_grid, y_grid)
+
+        # Compute stress values
+        S = np.vectorize(func)(Y, Z)
+
+        # Mask points outside geometry
+        mask = self._create_mask(Y, Z)
+        S_masked = np.where(mask, S, np.nan)
+
         # Plot contours
-        # Note: Plot (z, y) so z is horizontal x-axis
-        contour = ax.contourf(Z, Y, S, cmap='viridis', levels=20)
-        plt.colorbar(contour, ax=ax, label=f'{type} Stress')
+        contour_plot = ax.contourf(Z, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
+        display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
+        colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
+
+        # Draw outlines on top to hide jagged edges
+        self._draw_outlines(ax)
         
-        # Draw outlines
-        for s in self.section.geometry.shapes:
-            # (y, z) -> plot (z, y)
-            zs = [p[1] for p in s.points] + [s.points[0][1]]
-            ys = [p[0] for p in s.points] + [s.points[0][0]]
-            color = 'white' if s.hollow else 'black'
-            linestyle = '--' if s.hollow else '-'
-            ax.plot(zs, ys, color=color, linestyle=linestyle, linewidth=1)
-            
+        # Set appropriate limits
+        ax.set_xlim(min_z - padding/2, max_z + padding/2)
+        ax.set_ylim(min_y - padding/2, max_y + padding/2)
+        
         ax.set_aspect('equal')
-        ax.set_xlabel('z (Horizontal)')
-        ax.set_ylabel('y (Vertical)')
-        ax.set_title(f'{type} Stress Distribution')
-        
+        ax.set_xlabel('z')
+        ax.set_ylabel('y')
+        ax.set_title(f'{display_name} stress')
+
         if show:
             plt.show()
-            
+
         return ax

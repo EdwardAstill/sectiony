@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "contours": [
+    {
+      "segments": [
+        {
+          "type": "line",
+          "start": [
+            0,
+            0
+          ],
+          "end": [
+            50,
+            0
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            50,
+            0
+          ],
+          "end": [
+            25,
+            86.6
+          ]
+        },
+        {
+          "type": "line",
+          "start": [
+            25,
+            86.6
+          ],
+          "end": [
+            0,
+            0
+          ]
+        }
+      ],
+      "hollow": false
+    }
+  ]
+}

@@ -9,7 +9,7 @@ src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from sectiony.geometry import Geometry, Shape
+from sectiony.geometry import Geometry, Contour
 from sectiony.section import Section
 
 class TestSectionProperties(unittest.TestCase):
@@ -27,8 +27,8 @@ class TestSectionProperties(unittest.TestCase):
             (-h/2, -b/2),
             (-h/2, b/2)
         ]
-        shape = Shape(points=points)
-        geom = Geometry(shapes=[shape])
+        contour = Contour.from_points(points)
+        geom = Geometry(contours=[contour])
         sec = Section(name="Rect", geometry=geom)
         
         expected_A = b * h
@@ -64,7 +64,8 @@ class TestSectionProperties(unittest.TestCase):
             (0.0, 0.0),
             (0.0, 10.0)
         ]
-        sec = Section(name="Offset Rect", geometry=Geometry(shapes=[Shape(points=points)]))
+        contour = Contour.from_points(points)
+        sec = Section(name="Offset Rect", geometry=Geometry(contours=[contour]))
         
         # Parallel Axis Theorem implicitly handled by geometry calculation?
         # No, properties are calculated about the CENTROID.
@@ -89,10 +90,10 @@ class TestSectionProperties(unittest.TestCase):
         points_outer = [(10,10), (10,-10), (-10,-10), (-10,10)]
         points_inner = [(5,5), (5,-5), (-5,-5), (-5,5)]
         
-        geom = Geometry(shapes=[
-            Shape(points=points_outer),
-            Shape(points=points_inner, hollow=True)
-        ])
+        outer_contour = Contour.from_points(points_outer, hollow=False)
+        inner_contour = Contour.from_points(points_inner, hollow=True)
+        
+        geom = Geometry(contours=[outer_contour, inner_contour])
         sec = Section(name="Hollow Box", geometry=geom)
         
         expected_A = 400.0 - 100.0
@@ -121,15 +122,6 @@ class TestSectionProperties(unittest.TestCase):
         # Total: y=0..10, z=0..10
         
         # Let's define as one polygon
-        points = [
-            (10, 2),  # Top inner
-            (10, 0),  # Top left
-            (0, 0),   # Bottom left
-            (0, 10),  # Bottom right
-            (2, 10),  # Bottom right inner
-            (2, 2)    # Inner corner
-        ]
-        # Wait, order: (10,0) -> (0,0) -> (0,10) -> (2,10) -> (2,2) -> (10,2)?
         # CCW: 
         # (0,0) -> (0,10) -> (2,10) -> (2,2) -> (10,2) -> (10,0)
         points = [
@@ -148,7 +140,8 @@ class TestSectionProperties(unittest.TestCase):
         # Close to (0,0).
         # This is an L shape.
         
-        sec = Section(name="L-Section", geometry=Geometry(shapes=[Shape(points=points)]))
+        contour = Contour.from_points(points)
+        sec = Section(name="L-Section", geometry=Geometry(contours=[contour]))
         
         # Iyz should be non-zero because it's asymmetric about centroidal axes
         print(f"  - Iyz: {sec.Iyz:.4f}")
