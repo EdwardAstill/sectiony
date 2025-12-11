@@ -1,4 +1,4 @@
-# Sectiony
+﻿# Sectiony
 
 A Python library for calculating section properties and performing stress analysis of structural cross-sections.
 
@@ -139,3 +139,4 @@ print(f"Area: {beam.A:.2f}")
 print(f"Iyy: {beam.Iy:.2f}")
 print(f"J: {beam.J:.2f}")
 ```
+
