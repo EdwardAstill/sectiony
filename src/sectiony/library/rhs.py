@@ -29,7 +29,11 @@ def rhs(b: float, h: float, t: float, r: float) -> Section:
     
     geom = Geometry(contours=[outer_contour, inner_contour])
     
-    return Section(name=f"RHS {b}x{h}x{t}", geometry=geom)
+    return Section(
+        name=f"RHS {b}x{h}x{t}", 
+        geometry=geom,
+        dimensions={"b": b, "h": h, "t": t, "r": r}
+    )
 
 
 def _rounded_rect_segments(h: float, b: float, r: float):

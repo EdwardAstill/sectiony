@@ -110,5 +110,9 @@ def i(d: float, b: float, tf: float, tw: float, r: float) -> Section:
     contour = Contour(segments=segments, hollow=False)
     geom = Geometry(contours=[contour])
     
-    return Section(name=f"I {d}x{b}", geometry=geom)
+    return Section(
+        name=f"I {d}x{b}", 
+        geometry=geom,
+        dimensions={"d": d, "b": b, "tf": tf, "tw": tw, "r": r}
+    )
 

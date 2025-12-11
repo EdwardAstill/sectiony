@@ -86,5 +86,9 @@ def u(b: float, h: float, t: float, r: float) -> Section:
     contour = Contour(segments=segments, hollow=False)
     geom = Geometry(contours=[contour])
     
-    return Section(name=f"U {b}x{h}x{t}", geometry=geom)
+    return Section(
+        name=f"U {b}x{h}x{t}", 
+        geometry=geom,
+        dimensions={"b": b, "h": h, "t": t, "r": r}
+    )
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from dataclasses import dataclass, field
+from typing import Optional, List, Tuple, Dict
 from .geometry import Geometry
 from .properties import SectionProperties
 
@@ -26,9 +26,11 @@ class Section:
     z_max: Optional[float] = None
     Zpl_y: Optional[float] = None
     Zpl_z: Optional[float] = None
+    Cw: Optional[float] = None  # Warping constant
     SCy: Optional[float] = None  # Shear center y-coordinate
     SCz: Optional[float] = None  # Shear center z-coordinate
     geometry: Optional[Geometry] = None
+    dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
     def plot(self, ax=None, show=True):
         """Plot the section geometry."""
@@ -89,5 +91,6 @@ class Section:
         self.z_max = props.z_max
         self.Zpl_y = props.Zpl_y
         self.Zpl_z = props.Zpl_z
+        self.Cw = props.Cw
         self.SCy = props.SCy
         self.SCz = props.SCz

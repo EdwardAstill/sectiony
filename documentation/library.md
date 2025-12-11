@@ -77,3 +77,28 @@ section = u(b=100.0, h=200.0, t=8.0, r=5.0)
 - Sections use native curve representations for accurate geometry and plotting
 - All sections can be serialized to JSON and loaded back with exact curve preservation
 - See `examples/gallery/` for visual examples of all library sections
+
+## Accessing Original Dimensions
+
+All library shapes retain their original dimensions in a `dimensions` attribute (dictionary). This allows you to retrieve the parameters used to create the section:
+
+**Example:**
+```python
+from sectiony.library import rhs
+
+section = rhs(b=100.0, h=200.0, t=10.0, r=15.0)
+
+# Access original dimensions
+print(section.dimensions)
+# Output: {'b': 100.0, 'h': 200.0, 't': 10.0, 'r': 15.0}
+
+# Access individual dimensions
+thickness = section.dimensions["t"]
+height = section.dimensions["h"]
+```
+
+The `dimensions` dictionary contains:
+- **CHS**: `d` (diameter), `t` (thickness)
+- **RHS**: `b` (width), `h` (height), `t` (thickness), `r` (corner radius)
+- **I Section**: `d` (depth), `b` (width), `tf` (flange thickness), `tw` (web thickness), `r` (root radius)
+- **U Section**: `b` (width), `h` (height), `t` (thickness), `r` (corner radius)

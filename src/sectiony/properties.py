@@ -28,6 +28,7 @@ class SectionProperties:
     z_max: float = 0.0
     Zpl_y: float = 0.0
     Zpl_z: float = 0.0
+    Cw: float = 0.0  # Warping constant
     SCy: float = 0.0  # Shear center y-coordinate
     SCz: float = 0.0  # Shear center z-coordinate
 
@@ -257,6 +258,45 @@ def calculate_grid_properties(
     
     # --- Shear Center ---
     _calculate_shear_center(props, contours)
+    
+    # --- Warping Constant Cw ---
+    from .utils import solve_warping_jacobi
+    
+    # Solve Laplace for omega
+    omega = solve_warping_jacobi(mask, h, props.Cy, props.Cz, y_vals, z_vals)
+    
+    # Extract omega values inside the section
+    w = omega[mask]
+    
+    if len(w) > 0:
+        # Normalize omega (Condition 1: Mean = 0)
+        w_mean = np.mean(w)
+        w0 = w - w_mean
+        
+        # Calculate warping moments
+        # The coordinates y, z are already available for mask points in y_coords, z_coords
+        # Relative to centroid
+        y_c = y_coords - props.Cy
+        z_c = z_coords - props.Cz
+        
+        Iw_z = np.sum(w0 * z_c) * dA  # Integral w0 * z dA
+        Iw_y = np.sum(w0 * y_c) * dA  # Integral w0 * y dA
+        
+        # Calculate shear center coordinates (from warping definition)
+        # Note: We already calculated SCy, SCz using a different method. 
+        # Ideally they should match.
+        
+        # Normalized warping function: wn = w0 - SCz * y + SCy * z
+        # (Note: Using SC from properties)
+        # Check signs: 
+        # Standard: wn = w0 - x_s * y + y_s * x (using x,y)
+        # Here (y,z): wn = w0 - z_s * y + y_s * z ?
+        # Let's verify with dimensions: w ~ L^2. z_s * y ~ L^2. Correct.
+        
+        wn = w0 - props.SCz * y_c + props.SCy * z_c
+        
+        # Warping constant Cw = Integral wn^2 dA
+        props.Cw = np.sum(wn**2) * dA
 
 
 def _calculate_shear_center(

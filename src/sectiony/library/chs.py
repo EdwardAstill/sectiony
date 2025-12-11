@@ -32,4 +32,8 @@ def chs(d: float, t: float) -> Section:
     
     geom = Geometry(contours=[outer_contour, inner_contour])
     
-    return Section(name=f"CHS {d}x{t}", geometry=geom)
+    return Section(
+        name=f"CHS {d}x{t}", 
+        geometry=geom,
+        dimensions={"d": d, "t": t}
+    )
