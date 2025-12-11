@@ -141,14 +141,15 @@ class TestLibrary(unittest.TestCase):
     def test_u(self):
         b = 50.0 # Total width (z)
         h = 100.0 # Total height (y)
-        t = 5.0
+        tw = 5.0  # Web thickness
+        tf = 5.0  # Flange thickness
         r = 0.0
-        sec = u(b, h, t, r)
+        sec = u(b, h, tw, tf, r)
         
-        # Area = bh - (b-t)(h-2t)
-        expected_A = b*h - (b-t)*(h-2*t)
+        # Area = bh - (b-tw)(h-2*tf)
+        expected_A = b*h - (b-tw)*(h-2*tf)
         
-        print(f"  - U {b}x{h}x{t} (sharp)")
+        print(f"  - U {b}x{h}x{tw}x{tf} (sharp)")
         print(f"  - A: {sec.A:.4f} vs {expected_A:.4f}")
         
         self.assertAlmostEqual(sec.A, expected_A, places=5)

@@ -92,7 +92,7 @@ save_json(i_section, "03_i_section")
 
 # U-Channel
 print("\n1.4 U-Channel")
-u_section = u(b=100.0, h=200.0, t=8.0, r=5.0)  # Width, Height, Thickness, Corner radius
+u_section = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)  # Width, Height, Web thickness, Flange thickness, Corner radius
 print(f"   Section: {u_section.name}")
 print(f"   Area: {u_section.A:.2f} mm²")
 print(f"   Shear Center: ({u_section.SCy:.2f}, {u_section.SCz:.2f})")
@@ -345,8 +345,8 @@ This example demonstrated:
 1. Standard Library Sections:
    - chs(): Circular Hollow Section
    - rhs(): Rectangular Hollow Section  
-   - i(): I-Section
-   - u(): U-Channel
+   - i(): I-Section (with separate web and flange thickness)
+   - u(): U-Channel (with separate web and flange thickness)
 
 2. Custom Sections (No Holes):
    - Contour.from_points() for simple polygons

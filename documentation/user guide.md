@@ -48,7 +48,7 @@ my_rhs = rhs(b=100.0, h=200.0, t=10.0, r=15.0)
 my_beam = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=10.0)
 
 # U-Channel
-my_channel = u(b=100.0, h=200.0, t=8.0, r=5.0)
+my_channel = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
 ```
 
 All library functions return a `Section` object with automatically calculated properties. Additionally, library shapes retain their original dimensions in a `dimensions` attribute (dictionary), allowing you to easily retrieve the parameters used to create the section:

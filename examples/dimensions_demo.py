@@ -45,12 +45,13 @@ def main():
     print(f"  Area: {i_section.A:.2f} mm²")
     
     # Create U-channel
-    u_section = u(b=100.0, h=200.0, t=8.0, r=5.0)
+    u_section = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
     print(f"\n{u_section.name}")
     print(f"  Dimensions: {u_section.dimensions}")
     print(f"  Width: {u_section.dimensions['b']} mm")
     print(f"  Height: {u_section.dimensions['h']} mm")
-    print(f"  Thickness: {u_section.dimensions['t']} mm")
+    print(f"  Web thickness: {u_section.dimensions['tw']} mm")
+    print(f"  Flange thickness: {u_section.dimensions['tf']} mm")
     print(f"  Corner radius: {u_section.dimensions['r']} mm")
     print(f"  Area: {u_section.A:.2f} mm²")
     

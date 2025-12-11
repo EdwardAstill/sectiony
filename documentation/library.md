@@ -56,11 +56,12 @@ section = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=0.0)
 ```
 
 ## U (Channel) Section (u)
-`u(b, h, t, r)`
+`u(b, h, tw, tf, r)`
 
 *   **b**: Width (z-direction)
 *   **h**: Height (y-direction)
-*   **t**: Thickness (uniform for web and flanges)
+*   **tw**: Web thickness
+*   **tf**: Flange thickness
 *   **r**: Outside corner radius (0 for sharp corners)
 
 **Example:**
@@ -68,7 +69,7 @@ section = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=0.0)
 from sectiony.library import u
 
 # U-channel with rounded corners
-section = u(b=100.0, h=200.0, t=8.0, r=5.0)
+section = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
 ```
 
 ## Notes
@@ -101,4 +102,4 @@ The `dimensions` dictionary contains:
 - **CHS**: `d` (diameter), `t` (thickness)
 - **RHS**: `b` (width), `h` (height), `t` (thickness), `r` (corner radius)
 - **I Section**: `d` (depth), `b` (width), `tf` (flange thickness), `tw` (web thickness), `r` (root radius)
-- **U Section**: `b` (width), `h` (height), `t` (thickness), `r` (corner radius)
+- **U Section**: `b` (width), `h` (height), `tw` (web thickness), `tf` (flange thickness), `r` (corner radius)

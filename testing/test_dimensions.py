@@ -45,13 +45,14 @@ class TestDimensions(unittest.TestCase):
     
     def test_u_dimensions(self):
         """Test U-channel dimensions are stored correctly."""
-        section = u(b=100.0, h=200.0, t=8.0, r=5.0)
+        section = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
         self.assertIsNotNone(section.dimensions)
         self.assertEqual(section.dimensions["b"], 100.0)
         self.assertEqual(section.dimensions["h"], 200.0)
-        self.assertEqual(section.dimensions["t"], 8.0)
+        self.assertEqual(section.dimensions["tw"], 8.0)
+        self.assertEqual(section.dimensions["tf"], 10.0)
         self.assertEqual(section.dimensions["r"], 5.0)
-        self.assertEqual(len(section.dimensions), 4)
+        self.assertEqual(len(section.dimensions), 5)
     
     def test_dimensions_dictionary_access(self):
         """Test that dimensions can be accessed like a dictionary."""
@@ -84,4 +85,5 @@ class TestDimensions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 

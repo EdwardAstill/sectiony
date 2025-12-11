@@ -43,7 +43,7 @@ class TestSectionPlot(unittest.TestCase):
             chs(d=20, t=1),
             rhs(b=10, h=20, t=1, r=1),
             i(d=20, b=10, tf=1, tw=1, r=0),
-            u(b=10, h=20, t=1, r=0)
+            u(b=10, h=20, tw=1, tf=1, r=0)
         ]
         
         for sec in sections:
