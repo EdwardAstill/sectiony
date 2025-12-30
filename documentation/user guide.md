@@ -349,8 +349,8 @@ my_section.geometry.to_dxf("output.dxf")
 ```
 
 **Coordinate Mapping:**
-- DXF X-axis → Section Y-axis (horizontal)
-- DXF Y-axis → Section Z-axis (vertical)
+- DXF X-axis → Section z-axis (horizontal)
+- DXF Y-axis → Section y-axis (vertical)
 
 For detailed information on supported formats, DXF entity types, and best practices, see the [Import and Export](import_export.md) guide.
 

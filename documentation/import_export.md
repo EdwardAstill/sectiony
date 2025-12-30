@@ -75,8 +75,8 @@ section = Section(name="DXF Section", geometry=geometry)
 ```
 
 **Note on Coordinates:**
-*   **DXF X-axis** maps to **Section Y-axis** (Horizontal in engineering convention)
-*   **DXF Y-axis** maps to **Section Z-axis** (Vertical in engineering convention)
+*   **DXF X-axis** maps to **Section z-axis** (Horizontal in sectiony)
+*   **DXF Y-axis** maps to **Section y-axis** (Vertical in sectiony)
 
 ### Supported DXF Entities
 

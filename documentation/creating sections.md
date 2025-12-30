@@ -18,8 +18,8 @@ my_rhs = rhs(b=100.0, h=200.0, t=10.0, r=15.0)
 # I-Section (depth, width, flange thickness, web thickness, radius)
 my_beam = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=10.0)
 
-# U-Channel (width, height, thickness, corner radius)
-my_channel = u(b=100.0, h=200.0, t=8.0, r=5.0)
+# U-Channel (width, height, web thickness, flange thickness, corner radius)
+my_channel = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
 ```
 
 ## 2. From Custom Geometry
@@ -105,8 +105,8 @@ print(section.J)         # Torsion constant
 print(section.SCy, section.SCz)  # Shear center
 
 # Section moduli
-print(section.Sy_min, section.Sy_max)  # Elastic moduli
-print(section.Zpl_y, section.Zpl_z)    # Plastic moduli
+print(section.Sy, section.Sz)          # Elastic section moduli
+print(section.Zpl_y, section.Zpl_z)    # Plastic section moduli
 ```
 
 ### Discretization
