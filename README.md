@@ -1,4 +1,4 @@
-﻿# Sectiony
+# Sectiony
 
 A Python library for calculating section properties and performing stress analysis of structural cross-sections.
 
@@ -19,7 +19,7 @@ Sectiony provides a library of common structural shapes that can be easily gener
 `sectiony.library.rhs(b, h, t, r)`
 
 **Parameters:**
-- `b` (float): Width (z-direction)
+- `b` (float): Width (x-direction)
 - `h` (float): Height (y-direction)
 - `t` (float): Wall thickness
 - `r` (float): Outer corner radius
@@ -31,7 +31,7 @@ Sectiony provides a library of common structural shapes that can be easily gener
 
 **Parameters:**
 - `d` (float): Depth (Height, y-direction)
-- `b` (float): Width (Base, z-direction)
+- `b` (float): Width (Base, x-direction)
 - `tf` (float): Flange thickness
 - `tw` (float): Web thickness
 - `r` (float): Root radius (fillet between web and flange)
@@ -39,12 +39,13 @@ Sectiony provides a library of common structural shapes that can be easily gener
 ---
 
 ### U (Channel) Section (u)
-`sectiony.library.u(b, h, t, r)`
+`sectiony.library.u(b, h, tw, tf, r)`
 
 **Parameters:**
-- `b` (float): Width (z-direction)
+- `b` (float): Width (x-direction)
 - `h` (float): Height (y-direction)
-- `t` (float): Thickness (uniform for web and flanges)
+- `tw` (float): Web thickness
+- `tf` (float): Flange thickness
 - `r` (float): Outside corner radius
 
 ---
@@ -75,11 +76,11 @@ Sectiony can calculate and visualize stress distributions resulting from interna
 
 ```python
 # Apply loads to the section
-# N: Axial force, Vy/Vz: Shear forces, Mx: Torsion, My/Mz: Bending moments
+# N: Axial force, Vx/Vy: Shear forces, Mz: Torsion, Mx/My: Bending moments
 stress_analysis = beam.calculate_stress(
     N=1000,    # Tension
-    Mz=50000,  # Bending about Z-axis
-    Vy=500     # Shear in Y-direction
+    Mx=50000,  # Bending about x-axis
+    Vy=500     # Shear in y-direction
 )
 
 # Plot von Mises stress distribution
@@ -120,14 +121,14 @@ Sectiony automatically calculates a comprehensive set of properties for any geom
 | Symbol | Property | Description |
 | :--- | :--- | :--- |
 | **A** | Area | Total cross-sectional area. |
-| **Cy**, **Cz** | Centroids | Geometric center of the section. |
-| **Iy**, **Iz** | Moments of Inertia | Resistance to bending about y and z axes. |
-| **Iyz** | Product of Inertia | Measure of asymmetry. |
+| **Cx**, **Cy** | Centroids | Geometric center of the section. |
+| **Ix**, **Iy** | Moments of Inertia | Resistance to bending about x and y axes. |
+| **Ixy** | Product of Inertia | Measure of asymmetry. |
 | **J** | Torsional Constant | Resistance to twisting. |
-| **Sy**, **Sz** | Elastic Moduli | Used for elastic stress calculation ($I/c$). |
-| **Zpl_y**, **Zpl_z** | Plastic Moduli | Used for plastic moment capacity. |
-| **ry**, **rz** | Radii of Gyration | Used for buckling analysis ($\sqrt{I/A}$). |
-| **SCy**, **SCz** | Shear Center | Point where transverse loads induce no torsion. |
+| **Sx**, **Sy** | Elastic Moduli | Used for elastic stress calculation ($I/c$). |
+| **Zpl_x**, **Zpl_y** | Plastic Moduli | Used for plastic moment capacity. |
+| **rx**, **ry** | Radii of Gyration | Used for buckling analysis ($\sqrt{I/A}$). |
+| **SCx**, **SCy** | Shear Center | Point where transverse loads induce no torsion. |
 
 ### Accessing Properties
 
@@ -136,7 +137,7 @@ Properties are available as attributes on the `Section` object:
 ```python
 # Print properties
 print(f"Area: {beam.A:.2f}")
-print(f"Iyy: {beam.Iy:.2f}")
+print(f"Ix: {beam.Ix:.2f}")
 print(f"J: {beam.J:.2f}")
 ```
 

@@ -20,27 +20,27 @@ class TestExactVsGrid(unittest.TestCase):
         """Compare Exact vs Grid properties for a simple rectangle."""
         b, h = 10.0, 20.0
         # Create manually
-        points = [(h/2, b/2), (h/2, -b/2), (-h/2, -b/2), (-h/2, b/2)]
+        points = [(b/2, h/2), (b/2, -h/2), (-b/2, -h/2), (-b/2, h/2)]
         contour = Contour.from_points(points)
         sec = Section(name="Rect", geometry=Geometry(contours=[contour]))
         
         # Exact (Green's theorem)
         exact_A = sec.A
+        exact_Ix = sec.Ix
         exact_Iy = sec.Iy
-        exact_Iz = sec.Iz
         
-        print(f"  Exact: A={exact_A:.4f}, Iy={exact_Iy:.4f}, Iz={exact_Iz:.4f}")
+        print(f"  Exact: A={exact_A:.4f}, Ix={exact_Ix:.4f}, Iy={exact_Iy:.4f}")
         
         # Zpl for rectangle
         expected_Zpl_y = h * b**2 / 4
-        expected_Zpl_z = b * h**2 / 4
+        expected_Zpl_x = b * h**2 / 4
         
         print(f"  Zpl_y: Calc={sec.Zpl_y:.4f}, Exact={expected_Zpl_y:.4f}")
-        print(f"  Zpl_z: Calc={sec.Zpl_z:.4f}, Exact={expected_Zpl_z:.4f}")
+        print(f"  Zpl_x: Calc={sec.Zpl_x:.4f}, Exact={expected_Zpl_x:.4f}")
         
         # Check within 5%
         self.assertAlmostEqual(sec.Zpl_y, expected_Zpl_y, delta=expected_Zpl_y * 0.05)
-        self.assertAlmostEqual(sec.Zpl_z, expected_Zpl_z, delta=expected_Zpl_z * 0.05)
+        self.assertAlmostEqual(sec.Zpl_x, expected_Zpl_x, delta=expected_Zpl_x * 0.05)
 
     def test_circular_section(self):
         """Compare Exact vs Grid for solid circle."""

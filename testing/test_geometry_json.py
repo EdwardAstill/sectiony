@@ -82,8 +82,9 @@ class TestGeometryJSON(unittest.TestCase):
             self.assertIsInstance(seg, Line)
         
         # Verify discretization returns original points
-        discretized = contour.discretize()
+        discretized = contour.discretize(resolution=1)
         self.assertEqual(len(discretized), 4)
+        self.assertEqual(discretized, points)
 
     def test_validation_missing_fields(self):
         """Test that from_dict raises error for missing fields."""

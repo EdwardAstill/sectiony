@@ -12,10 +12,10 @@ beam = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=10.0)
 
 # View properties
 print(f"Area: {beam.A:.2f}")
-print(f"Moment of Inertia: {beam.Iz:.2f}")
+print(f"Moment of Inertia: {beam.Ix:.2f}")
 
 # Calculate stress
-stress = beam.calculate_stress(N=-10000, Mz=5000)
+stress = beam.calculate_stress(N=-10000, Mx=5000)
 print(f"Max stress: {stress.max('sigma'):.2f}")
 
 # Visualize
@@ -66,9 +66,10 @@ See the [Standard Library](library.md) documentation for detailed parameter desc
 For arbitrary shapes, you define the section by constructing a `Geometry` object. A `Geometry` is a collection of `Contour` objects, which define the boundary of the shape. Contours are made of segments like `Line` and `Arc`.
 
 **Coordinate System:**
+- **x-axis**: Horizontal (Positive Right)
 - **y-axis**: Vertical (Positive Up)
-- **z-axis**: Horizontal (Positive Right)
-- Points are defined as tuples `(y, z)`
+- **z-axis**: Longitudinal (Positive Out of Plane/Towards Viewer)
+- Points are defined as tuples `(x, y)`
 
 You can create solid shapes and hollow shapes (holes).
 
@@ -78,19 +79,19 @@ from sectiony import Section, Geometry, Contour, Line
 # Define a solid rectangle (10 wide, 20 high)
 # Define segments for the outer boundary
 outer_segments = [
-    Line(start=(10, 5), end=(10, -5)),   # Top edge
-    Line(start=(10, -5), end=(-10, -5)), # Left edge
-    Line(start=(-10, -5), end=(-10, 5)), # Bottom edge
-    Line(start=(-10, 5), end=(10, 5))    # Right edge
+    Line(start=(5, 10), end=(5, -10)),     # Right edge
+    Line(start=(5, -10), end=(-5, -10)),   # Bottom edge
+    Line(start=(-5, -10), end=(-5, 10)),   # Left edge
+    Line(start=(-5, 10), end=(5, 10))      # Top edge
 ]
 solid_contour = Contour(segments=outer_segments, hollow=False)
 
 # Define a hole (smaller rectangle)
 inner_segments = [
-    Line(start=(5, 2.5), end=(5, -2.5)),
-    Line(start=(5, -2.5), end=(-5, -2.5)),
-    Line(start=(-5, -2.5), end=(-5, 2.5)),
-    Line(start=(-5, 2.5), end=(5, 2.5))
+    Line(start=(2.5, 5), end=(2.5, -5)),
+    Line(start=(2.5, -5), end=(-2.5, -5)),
+    Line(start=(-2.5, -5), end=(-2.5, 5)),
+    Line(start=(-2.5, 5), end=(2.5, 5))
 ]
 hole_contour = Contour(segments=inner_segments, hollow=True)
 
@@ -142,39 +143,39 @@ Once a `Section` is initialized, its geometric properties are automatically calc
 
 ```python
 print(f"Area: {my_section.A}")
-print(f"Centroid: ({my_section.Cy}, {my_section.Cz})")
-print(f"Max distances: y_max={my_section.y_max}, z_max={my_section.z_max}")
+print(f"Centroid: ({my_section.Cx}, {my_section.Cy})")
+print(f"Max distances: x_max={my_section.x_max}, y_max={my_section.y_max}")
 ```
 
 ### Inertia Properties
 
 ```python
+print(f"Ix (about x-axis): {my_section.Ix}")
 print(f"Iy (about y-axis): {my_section.Iy}")
-print(f"Iz (about z-axis): {my_section.Iz}")
-print(f"Product of Inertia: {my_section.Iyz}")
+print(f"Product of Inertia: {my_section.Ixy}")
 print(f"Torsional Constant: {my_section.J}")
 ```
 
 ### Strength Properties
 
 ```python
+print(f"Elastic Modulus (x): {my_section.Sx}")
 print(f"Elastic Modulus (y): {my_section.Sy}")
-print(f"Elastic Modulus (z): {my_section.Sz}")
+print(f"Plastic Modulus (x): {my_section.Zpl_x}")
 print(f"Plastic Modulus (y): {my_section.Zpl_y}")
-print(f"Plastic Modulus (z): {my_section.Zpl_z}")
 ```
 
 ### Stability Properties
 
 ```python
+print(f"Radius of Gyration (x): {my_section.rx}")
 print(f"Radius of Gyration (y): {my_section.ry}")
-print(f"Radius of Gyration (z): {my_section.rz}")
 ```
 
 ### Shear Center
 
 ```python
-print(f"Shear Center: ({my_section.SCy}, {my_section.SCz})")
+print(f"Shear Center: ({my_section.SCx}, {my_section.SCy})")
 ```
 
 **Property Reference:**
@@ -182,15 +183,15 @@ print(f"Shear Center: ({my_section.SCy}, {my_section.SCz})")
 | Property | Description |
 |----------|-------------|
 | **A** | Cross-sectional area |
-| **Cy, Cz** | Centroid coordinates |
-| **Iy, Iz** | Second moment of area (bending stiffness) |
-| **Iyz** | Product of inertia (asymmetry measure) |
+| **Cx, Cy** | Centroid coordinates |
+| **Ix, Iy** | Second moment of area (bending stiffness) |
+| **Ixy** | Product of inertia (asymmetry measure) |
 | **J** | Torsional constant |
-| **Sy, Sz** | Elastic section modulus |
-| **Zpl_y, Zpl_z** | Plastic section modulus |
-| **ry, rz** | Radius of gyration (for buckling) |
-| **SCy, SCz** | Shear center coordinates |
-| **y_max, z_max** | Maximum distances from centroid |
+| **Sx, Sy** | Elastic section modulus |
+| **Zpl_x, Zpl_y** | Plastic section modulus |
+| **rx, ry** | Radius of gyration (for buckling) |
+| **SCx, SCy** | Shear center coordinates |
+| **x_max, y_max** | Maximum distances from centroid |
 
 For detailed explanations, see the [Section Properties](section properties.md) documentation.
 
@@ -221,25 +222,24 @@ You can calculate and visualize stresses resulting from internal forces (Normal 
 You can define a stress state by applying loads to your section using the `calculate_stress()` method:
 
 *   **N**: Axial Force (positive = tension)
-*   **Vy, Vz**: Shear Forces (vertical and horizontal)
-*   **Mx**: Torsional Moment
-*   **My**: Bending Moment about Y-axis (bending horizontally)
-*   **Mz**: Bending Moment about Z-axis (bending vertically)
+*   **Vx, Vy**: Shear Forces (horizontal and vertical)
+*   **Mx, My**: Bending Moments about x and y
+*   **Mz**: Torsional Moment about z
 
 ```python
 # Apply 10kN compression and 5kNm bending moment
-stress = my_section.calculate_stress(N=-10000, Mz=5000)
+stress = my_section.calculate_stress(N=-10000, Mx=5000)
 
 # Or create Stress object directly
 from sectiony import Stress
 stress = Stress(
     section=my_section,
     N=-10000,      # Compression
+    Vx=0.0,
     Vy=0.0,
-    Vz=0.0,
-    Mx=0.0,        # No torsion
+    Mx=5000.0,     # Bending moment about x
     My=0.0,
-    Mz=5000        # Bending moment
+    Mz=0.0         # No torsion
 )
 ```
 
@@ -257,15 +257,15 @@ The following stress types can be calculated:
 
 ### Calculating Stress Values
 
-You can get specific stress values at any $(y, z)$ coordinate or find maximums/minimums.
+You can get specific stress values at any $(x, y)$ coordinate or find maximums/minimums.
 
 ```python
 # Get stress at a specific point
-sigma = stress.sigma(y=10.0, z=0.0)
-vm = stress.von_mises(y=10.0, z=0.0)
+sigma = stress.sigma(x=10.0, y=0.0)
+vm = stress.von_mises(x=10.0, y=0.0)
 
 # Or use the generic 'at' method
-sigma = stress.at(y=10.0, z=0.0, stress_type="sigma")
+sigma = stress.at(x=10.0, y=0.0, stress_type="sigma")
 
 # Find maximum and minimum values
 max_tension = stress.max("sigma")
@@ -349,7 +349,7 @@ my_section.geometry.to_dxf("output.dxf")
 ```
 
 **Coordinate Mapping:**
-- DXF X-axis → Section z-axis (horizontal)
+- DXF X-axis → Section x-axis (horizontal)
 - DXF Y-axis → Section y-axis (vertical)
 
 For detailed information on supported formats, DXF entity types, and best practices, see the [Import and Export](import_export.md) guide.
@@ -370,17 +370,19 @@ For detailed information on supported formats, DXF entity types, and best practi
 
 The library uses a standard right-handed Cartesian coordinate system:
 
+*   **x-axis**: Horizontal (Positive Right)
 *   **y-axis**: Vertical (Positive Up)
-*   **z-axis**: Horizontal (Positive Right)
-*   **x-axis**: Longitudinal (Positive Out of Plane) - used for internal force vectors
+*   **z-axis**: Longitudinal (Positive Out of Plane) - used for internal force vectors
 
-Points are defined as tuples `(y, z)`.
+Points are defined as tuples `(x, y)`.
 
 **Sign Conventions:**
 *   **N (Axial)**: Positive = Tension
-*   **My (Bending about Y)**: Positive compresses +z fibers (right side)
-*   **Mz (Bending about Z)**: Positive compresses +y fibers (top side)
-*   **Mx (Torsion)**: Positive vector points out of plane (+x)
+*   **Vx (Shear in X)**: Positive = +x (Right)
+*   **Vy (Shear in Y)**: Positive = +y (Up)
+*   **Mx (Bending about X)**: Positive compresses +y fibers (top side)
+*   **My (Bending about Y)**: Positive compresses +x fibers (right side)
+*   **Mz (Torsion about Z)**: Positive vector points out of plane (+z)
 
 For more details, see the [Units and Coordinates](units and coordinates.md) documentation.
 
@@ -403,14 +405,14 @@ custom_section = Section(name="Custom", geometry=geom)
 
 # Calculate properties
 print(f"Area: {beam.A:.2f}")
-print(f"Iz: {beam.Iz:.2f}")
-print(f"Shear Center: ({beam.SCy:.2f}, {beam.SCz:.2f})")
+print(f"Ix: {beam.Ix:.2f}")
+print(f"Shear Center: ({beam.SCx:.2f}, {beam.SCy:.2f})")
 
 # Visualize geometry
 beam.plot()
 
 # Calculate stress
-stress = beam.calculate_stress(N=-50000, Mz=100000, Vy=10000)
+stress = beam.calculate_stress(N=-50000, Mx=100000, Vy=10000)
 
 # Analyze stress
 print(f"Max tension: {stress.max('sigma'):.2f}")

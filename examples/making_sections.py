@@ -37,7 +37,7 @@ def save_plot(section: Section, filename: str) -> None:
     """Save a section plot to the gallery directory."""
     fig, ax = plt.subplots(figsize=(8, 8))
     section.plot(ax=ax, show=False)
-    ax.set_title(f"{section.name}\nA={section.A:.1f} mm², Iy={section.Iy:.1e} mm⁴", 
+    ax.set_title(f"{section.name}\nA={section.A:.1f} mm², Ix={section.Ix:.1e} mm⁴", 
                  fontsize=10)
     output_path = GALLERY_DIR / f"{filename}.svg"
     fig.savefig(output_path, format='svg', bbox_inches='tight', dpi=150)
@@ -67,7 +67,7 @@ chs_section = chs(d=200.0, t=10.0)  # Outer diameter 200mm, thickness 10mm
 print(f"   Section: {chs_section.name}")
 print(f"   Area: {chs_section.A:.2f} mm²")
 print(f"   Iy: {chs_section.Iy:.2f} mm⁴")
-print(f"   Centroid: ({chs_section.Cy:.2f}, {chs_section.Cz:.2f})")
+print(f"   Centroid: ({chs_section.Cx:.2f}, {chs_section.Cy:.2f})")
 save_plot(chs_section, "01_chs")
 save_json(chs_section, "01_chs")
 
@@ -76,8 +76,8 @@ print("\n1.2 Rectangular Hollow Section (RHS)")
 rhs_section = rhs(b=100.0, h=200.0, t=10.0, r=15.0)  # Width, Height, Thickness, Corner radius
 print(f"   Section: {rhs_section.name}")
 print(f"   Area: {rhs_section.A:.2f} mm²")
+print(f"   Ix: {rhs_section.Ix:.2f} mm⁴")
 print(f"   Iy: {rhs_section.Iy:.2f} mm⁴")
-print(f"   Iz: {rhs_section.Iz:.2f} mm⁴")
 save_plot(rhs_section, "02_rhs")
 save_json(rhs_section, "02_rhs")
 
@@ -86,7 +86,7 @@ print("\n1.3 I-Section")
 i_section = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=10.0)  # Depth, Width, Flange t, Web t, Radius
 print(f"   Section: {i_section.name}")
 print(f"   Area: {i_section.A:.2f} mm²")
-print(f"   Strong axis Iz: {i_section.Iz:.2f} mm⁴")
+print(f"   Strong axis Ix: {i_section.Ix:.2f} mm⁴")
 save_plot(i_section, "03_i_section")
 save_json(i_section, "03_i_section")
 
@@ -95,7 +95,7 @@ print("\n1.4 U-Channel")
 u_section = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)  # Width, Height, Web thickness, Flange thickness, Corner radius
 print(f"   Section: {u_section.name}")
 print(f"   Area: {u_section.A:.2f} mm²")
-print(f"   Shear Center: ({u_section.SCy:.2f}, {u_section.SCz:.2f})")
+print(f"   Shear Center: ({u_section.SCx:.2f}, {u_section.SCy:.2f})")
 save_plot(u_section, "04_u_channel")
 save_json(u_section, "04_u_channel")
 
@@ -137,7 +137,7 @@ triangle_geom = Geometry(contours=[triangle_contour])
 triangle_section = Section(name="Equilateral Triangle", geometry=triangle_geom)
 print(f"   Section: {triangle_section.name}")
 print(f"   Area: {triangle_section.A:.2f} mm²")
-print(f"   Centroid: ({triangle_section.Cy:.2f}, {triangle_section.Cz:.2f})")
+print(f"   Centroid: ({triangle_section.Cx:.2f}, {triangle_section.Cy:.2f})")
 save_plot(triangle_section, "06_triangle")
 save_json(triangle_section, "06_triangle")
 
@@ -146,13 +146,13 @@ print("\n2.3 D-Shape (using Line and Arc)")
 # Vertical straight back, rounded front
 d_segments = [
     # Vertical line going down (the back of the D)
-    Line(start=(50, 0), end=(-50, 0)),
+    Line(start=(0, 50), end=(0, -50)),
     # Arc from bottom to top via the right side
     Arc(
         center=(0, 0),
         radius=50.0,
         start_angle=3*math.pi/2,  # Bottom (-y)
-        end_angle=5*math.pi/2     # Top (+y), same as pi/2
+        end_angle=5*math.pi/2     # Top (+y)
     )
 ]
 d_contour = Contour(segments=d_segments, hollow=False)
@@ -167,28 +167,28 @@ save_json(d_section, "07_d_shape")
 # Example 2.4: Rounded Rectangle with Arcs
 print("\n2.4 Rounded Rectangle (using Lines and Arcs)")
 corner_radius = 10.0
-half_h = 40.0
-half_b = 20.0
-cy = half_h - corner_radius
-cz = half_b - corner_radius
+half_y = 40.0
+half_x = 20.0
+cx = half_x - corner_radius
+cy = half_y - corner_radius
 
 rounded_rect_segments = [
     # Top-Right corner arc
-    Arc(center=(cy, cz), radius=corner_radius, start_angle=0, end_angle=math.pi/2),
+    Arc(center=(cx, cy), radius=corner_radius, start_angle=0, end_angle=math.pi/2),
     # Top edge
-    Line(start=(half_h, cz), end=(half_h, -cz)),
+    Line(start=(cx, half_y), end=(-cx, half_y)),
     # Top-Left corner arc
-    Arc(center=(cy, -cz), radius=corner_radius, start_angle=math.pi/2, end_angle=math.pi),
+    Arc(center=(-cx, cy), radius=corner_radius, start_angle=math.pi/2, end_angle=math.pi),
     # Left edge
-    Line(start=(cy, -half_b), end=(-cy, -half_b)),
+    Line(start=(-half_x, cy), end=(-half_x, -cy)),
     # Bottom-Left corner arc
-    Arc(center=(-cy, -cz), radius=corner_radius, start_angle=math.pi, end_angle=3*math.pi/2),
+    Arc(center=(-cx, -cy), radius=corner_radius, start_angle=math.pi, end_angle=3*math.pi/2),
     # Bottom edge
-    Line(start=(-half_h, -cz), end=(-half_h, cz)),
+    Line(start=(-cx, -half_y), end=(cx, -half_y)),
     # Bottom-Right corner arc
-    Arc(center=(-cy, cz), radius=corner_radius, start_angle=3*math.pi/2, end_angle=2*math.pi),
+    Arc(center=(cx, -cy), radius=corner_radius, start_angle=3*math.pi/2, end_angle=2*math.pi),
     # Right edge (back to start)
-    Line(start=(-cy, half_b), end=(cy, half_b))
+    Line(start=(half_x, -cy), end=(half_x, cy))
 ]
 rounded_rect_contour = Contour(segments=rounded_rect_segments, hollow=False)
 rounded_rect_geom = Geometry(contours=[rounded_rect_contour])
@@ -371,12 +371,12 @@ Output Files:
 
 All sections automatically calculate:
 - Area (A)
-- Centroid (Cy, Cz)
-- Second moments (Iy, Iz, Iyz)
-- Section moduli (Sy, Sz)
-- Plastic moduli (Zpl_y, Zpl_z)
+- Centroid (Cx, Cy)
+- Second moments (Ix, Iy, Ixy)
+- Section moduli (Sx, Sy)
+- Plastic moduli (Zpl_x, Zpl_y)
 - Torsion constant (J)
-- Shear center (SCy, SCz)
+- Shear center (SCx, SCy)
 """)
 
 print(f"\nDone! Generated {len(list(GALLERY_DIR.glob('*.svg')))} plots and {len(list(JSON_DIR.glob('*.json')))} JSON files.")

@@ -46,9 +46,9 @@ geometry = Geometry(contours=[contour])
 
 **Available Segment Types:**
 
-- **Line**: `Line(start=(y1, z1), end=(y2, z2))`
-- **Arc**: `Arc(center=(y, z), radius=r, start_angle=θ1, end_angle=θ2)`
-  - Angles in radians: 0 is +z (Right), π/2 is +y (Up)
+- **Line**: `Line(start=(x1, y1), end=(x2, y2))`
+- **Arc**: `Arc(center=(x, y), radius=r, start_angle=θ1, end_angle=θ2)`
+  - Angles in radians: 0 is +x (Right), π/2 is +y (Up)
 - **CubicBezier**: `CubicBezier(p0, p1, p2, p3)`
   - p0 = start, p3 = end, p1/p2 = control points
 
@@ -68,7 +68,7 @@ The DXF parser supports:
 - ARC entities  
 - LWPOLYLINE entities (with bulge factors for arcs)
 
-DXF coordinates are automatically mapped to match **sectiony**'s coordinate system (DXF X → Section Z, DXF Y → Section Y).
+DXF coordinates are in the same plane as **sectiony** geometry (DXF X → Section x, DXF Y → Section y).
 
 ## 4. From Standard Library Shapes
 
@@ -84,9 +84,10 @@ geometry = my_rhs.geometry  # Access the Geometry object
 
 ## Coordinate System
 
+- **x-axis**: Horizontal (Positive Right)
 - **y-axis**: Vertical (Positive Up)
-- **z-axis**: Horizontal (Positive Right)
-- Points are tuples: `(y, z)`
+- **z-axis**: Longitudinal (Positive Out of Plane/Towards Viewer)
+- Points are tuples: `(x, y)`
 
 ## Validation
 

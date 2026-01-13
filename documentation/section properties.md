@@ -1,7 +1,7 @@
 # Section Properties
 
 **sectiony** calculates a comprehensive set of geometric and mechanical properties for any cross-section. These properties are calculated using a hybrid approach:
-- **Exact Integration (Green's Theorem)**: For Area, Centroids, and Moments of Inertia ($I_y, I_z, I_{yz}$).
+- **Exact Integration (Green's Theorem)**: For Area, Centroids, and Moments of Inertia ($I_x, I_y, I_{xy}$).
 - **Grid Discretization (Finite Difference)**: For complex torsion ($J$), plastic properties ($Z_{pl}$), and Shear Center.
 
 ## Geometric Properties
@@ -9,41 +9,41 @@
 | Symbol | Property | Description |
 | :--- | :--- | :--- |
 | **A** | Area | Total cross-sectional area ($\int dA$). |
+| **Cx** | Centroid (x) | Horizontal location of the geometric center. |
 | **Cy** | Centroid (y) | Vertical location of the geometric center. |
-| **Cz** | Centroid (z) | Horizontal location of the geometric center. |
+| **x_max** | Max x-distance | Distance from centroid to the furthest fiber in x-direction. |
 | **y_max** | Max y-distance | Distance from centroid to the furthest fiber in y-direction. |
-| **z_max** | Max z-distance | Distance from centroid to the furthest fiber in z-direction. |
 
 ## Inertia & Stiffness Properties
 
 | Symbol | Property | Description |
 | :--- | :--- | :--- |
-| **Iy** | Moment of Inertia (y) | Second moment of area about the **y-axis** ($\int z^2 dA$). Resistance to bending about the vertical axis (sideways bending). |
-| **Iz** | Moment of Inertia (z) | Second moment of area about the **z-axis** ($\int y^2 dA$). Resistance to bending about the horizontal axis (vertical bending). |
-| **Iyz** | Product of Inertia | Measure of asymmetry ($\int yz dA$). Zero for symmetric sections. Used to find principal axes. |
+| **Ix** | Moment of Inertia (x) | Second moment of area about the **x-axis** ($\int y^2 dA$). Resistance to bending about the x-axis. |
+| **Iy** | Moment of Inertia (y) | Second moment of area about the **y-axis** ($\int x^2 dA$). Resistance to bending about the y-axis. |
+| **Ixy** | Product of Inertia | Measure of asymmetry ($\int x y \, dA$). Zero for symmetric sections. Used to find principal axes. |
 | **J** | Torsional Constant | Resistance to twisting. Calculated by solving the Poisson equation on a grid. |
 
 ## Strength & Stability Properties
 
 | Symbol | Property | Description |
 | :--- | :--- | :--- |
-| **Sy** | Elastic Modulus (y) | $I_y / z_{max}$. Used for elastic stress calculation ($\sigma = M_y / S_y$). |
-| **Sz** | Elastic Modulus (z) | $I_z / y_{max}$. Used for elastic stress calculation ($\sigma = M_z / S_z$). |
+| **Sx** | Elastic Modulus (x) | $I_x / y_{max}$. Used for elastic stress calculation ($\sigma = M_x / S_x$). |
+| **Sy** | Elastic Modulus (y) | $I_y / x_{max}$. Used for elastic stress calculation ($\sigma = M_y / S_y$). |
+| **rx** | Radius of Gyration (x) | $\sqrt{I_x / A}$. Used for column buckling analysis about the x-axis. |
 | **ry** | Radius of Gyration (y) | $\sqrt{I_y / A}$. Used for column buckling analysis about the y-axis. |
-| **rz** | Radius of Gyration (z) | $\sqrt{I_z / A}$. Used for column buckling analysis about the z-axis. |
+| **Zpl_x** | Plastic Modulus (x) | First moment of area about the plastic neutral axis (horizontal). Used for plastic moment capacity. |
 | **Zpl_y** | Plastic Modulus (y) | First moment of area about the plastic neutral axis (vertical). Used for plastic moment capacity. |
-| **Zpl_z** | Plastic Modulus (z) | First moment of area about the plastic neutral axis (horizontal). Used for plastic moment capacity. |
 
 ## Shear Center
 
 | Symbol | Property | Description |
 | :--- | :--- | :--- |
+| **SCx** | Shear Center (x) | Horizontal coordinate of the shear center. |
 | **SCy** | Shear Center (y) | Vertical coordinate of the shear center. |
-| **SCz** | Shear Center (z) | Horizontal coordinate of the shear center. |
 
 The **shear center** is the point through which transverse loads must act to produce bending without torsion. It's calculated using numerical methods on the discretized grid:
 
-- **Doubly symmetric sections** (I-beams with equal flanges, rectangles, circles): The shear center coincides with the centroid ($SC_y = C_y$, $SC_z = C_z$).
+- **Doubly symmetric sections** (I-beams with equal flanges, rectangles, circles): The shear center coincides with the centroid ($SC_x = C_x$, $SC_y = C_y$).
 - **Singly symmetric sections** (channels, T-sections): The shear center lies on the axis of symmetry but is offset from the centroid.
 - **Asymmetric sections**: The shear center is offset from the centroid in both directions.
 
@@ -64,12 +64,9 @@ points = []
 # Generate points for a pentagon
 for i in range(5):
     angle = 2 * math.pi * i / 5  # 72 degrees steps
-    # y is vertical (sin), z is horizontal (cos)
-    # Using +y as up (pi/2 is top)
-    theta = angle + math.pi/2 
-    y = radius * math.sin(theta)
-    z = radius * math.cos(theta)
-    points.append((y, z))
+    x = radius * math.cos(angle)
+    y = radius * math.sin(angle)
+    points.append((x, y))
 
 # Create section using Contour.from_points() convenience method
 contour = Contour.from_points(points, hollow=False)
@@ -79,16 +76,16 @@ pentagon = Section(name="Pentagon", geometry=geom)
 # Access calculated properties
 print(f"--- Section Properties for Pentagon (R={radius}) ---")
 print(f"Area (A): {pentagon.A:.4f}")
-print(f"Centroid (Cy, Cz): ({pentagon.Cy:.4f}, {pentagon.Cz:.4f})")
+print(f"Centroid (Cx, Cy): ({pentagon.Cx:.4f}, {pentagon.Cy:.4f})")
+print(f"Moment of Inertia (Ix): {pentagon.Ix:.4f}")
 print(f"Moment of Inertia (Iy): {pentagon.Iy:.4f}")
-print(f"Moment of Inertia (Iz): {pentagon.Iz:.4f}")
 print(f"Torsional Constant (J): {pentagon.J:.4f}")
-print(f"Plastic Modulus z (Zpl_z): {pentagon.Zpl_z:.4f}")
+print(f"Plastic Modulus x (Zpl_x): {pentagon.Zpl_x:.4f}")
 ```
 
 ### Explanation of Calculations
 
-1.  **Exact Area & Inertia**: When `pentagon` is initialized, `geometry.calculate_properties()` is called. It iterates through the segments, discretizes them into points, and uses Green's Theorem (polygon area formulas) to compute `A`, `Cy`, `Cz`, `Iy`, `Iz`, and `Iyz` exactly.
+1.  **Exact Area & Inertia**: When `pentagon` is initialized, `geometry.calculate_properties()` is called. It iterates through the segments, discretizes them into points, and uses Green's Theorem (polygon area formulas) to compute `A`, `Cx`, `Cy`, `Ix`, `Iy`, and `Ixy` exactly.
 2.  **Hole Handling**: For sections with holes (`hollow=True` contours), holes are automatically clipped to only subtract from regions where they intersect with solid material. This ensures property calculations are physically meaningful.
 3.  **Grid Properties**: For `J` and `Zpl`, the code automatically creates a 2D grid (mask) over the shape's bounding box.
     *   **Plastic Modulus ($Z_{pl}$)**: It finds the plastic neutral axis (PNA) that bisects the area on the grid and sums the first moments of area about that axis.

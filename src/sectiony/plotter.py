@@ -39,23 +39,23 @@ def contour_to_path(contour: 'Contour') -> Optional[Path]:
     if isinstance(first_segment, Line):
         start_point = first_segment.start
     elif isinstance(first_segment, Arc):
-        cy, cz = first_segment.center
+        cx, cy = first_segment.center
+        x = cx + first_segment.radius * math.cos(first_segment.start_angle)
         y = cy + first_segment.radius * math.sin(first_segment.start_angle)
-        z = cz + first_segment.radius * math.cos(first_segment.start_angle)
-        start_point = (y, z)
+        start_point = (x, y)
     elif isinstance(first_segment, CubicBezier):
         start_point = first_segment.p0
     else:
         start_point = (0, 0)
     
-    # Convert (y, z) to plot coords (z, y) - z horizontal, y vertical
-    vertices.append((start_point[1], start_point[0]))
+    # Plot coords are the section coords (x horizontal, y vertical)
+    vertices.append((start_point[0], start_point[1]))
     codes.append(Path.MOVETO)
     
     for segment in contour.segments:
         if isinstance(segment, Line):
             # Line: just LINETO to end point
-            vertices.append((segment.end[1], segment.end[0]))
+            vertices.append((segment.end[0], segment.end[1]))
             codes.append(Path.LINETO)
             
         elif isinstance(segment, Arc):
@@ -63,20 +63,20 @@ def contour_to_path(contour: 'Contour') -> Optional[Path]:
             beziers = segment.to_beziers()
             for bez in beziers:
                 # CURVE4 needs 3 vertices: control1, control2, end
-                vertices.append((bez.p1[1], bez.p1[0]))
+                vertices.append((bez.p1[0], bez.p1[1]))
                 codes.append(Path.CURVE4)
-                vertices.append((bez.p2[1], bez.p2[0]))
+                vertices.append((bez.p2[0], bez.p2[1]))
                 codes.append(Path.CURVE4)
-                vertices.append((bez.p3[1], bez.p3[0]))
+                vertices.append((bez.p3[0], bez.p3[1]))
                 codes.append(Path.CURVE4)
                 
         elif isinstance(segment, CubicBezier):
             # Native cubic bezier
-            vertices.append((segment.p1[1], segment.p1[0]))
+            vertices.append((segment.p1[0], segment.p1[1]))
             codes.append(Path.CURVE4)
-            vertices.append((segment.p2[1], segment.p2[0]))
+            vertices.append((segment.p2[0], segment.p2[1]))
             codes.append(Path.CURVE4)
-            vertices.append((segment.p3[1], segment.p3[0]))
+            vertices.append((segment.p3[0], segment.p3[1]))
             codes.append(Path.CURVE4)
     
     # Close the path
@@ -99,8 +99,8 @@ def points_to_path(points: List[Point]) -> Optional[Path]:
     if not points or len(points) < 3:
         return None
     
-    # Convert (y, z) to plot coords (z, y)
-    vertices = [(p[1], p[0]) for p in points]
+    # Plot coords are the section coords (x horizontal, y vertical)
+    vertices = [(p[0], p[1]) for p in points]
     vertices.append(vertices[0])  # Close
     codes = [Path.MOVETO] + [Path.LINETO] * (len(points) - 1) + [Path.CLOSEPOLY]
     
@@ -170,7 +170,7 @@ def plot_section(
     solids = [c for c in section.geometry.contours if not c.hollow]
     hollows = [c for c in section.geometry.contours if c.hollow]
     
-    all_z: List[float] = []
+    all_x: List[float] = []
     all_y: List[float] = []
     
     # Plot solids
@@ -182,8 +182,8 @@ def plot_section(
         # Collect bounds from discretized points
         points = contour.discretize()
         for p in points:
-            all_y.append(p[0])
-            all_z.append(p[1])
+            all_x.append(p[0])
+            all_y.append(p[1])
         
         patch = PathPatch(path, facecolor='silver', edgecolor='black', 
                          alpha=0.8, linewidth=1.0)
@@ -201,8 +201,8 @@ def plot_section(
         for clipped_points in clipped_regions:
             # Collect bounds from clipped points
             for p in clipped_points:
-                all_y.append(p[0])
-                all_z.append(p[1])
+                all_x.append(p[0])
+                all_y.append(p[1])
             
             # Create path from clipped polygon
             path = points_to_path(clipped_points)
@@ -214,26 +214,26 @@ def plot_section(
             ax.add_patch(patch)
         
     # Set limits and aspect
-    if all_z and all_y:
-        z_min, z_max = min(all_z), max(all_z)
+    if all_x and all_y:
+        x_min, x_max = min(all_x), max(all_x)
         y_min, y_max = min(all_y), max(all_y)
         
-        dz = z_max - z_min
+        dx = x_max - x_min
         dy = y_max - y_min
         
-        if dz == 0:
-            dz = 1.0
+        if dx == 0:
+            dx = 1.0
         if dy == 0:
             dy = 1.0
         
-        padding_z = dz * 0.1
+        padding_x = dx * 0.1
         padding_y = dy * 0.1
         
-        ax.set_xlim(z_min - padding_z, z_max + padding_z)
+        ax.set_xlim(x_min - padding_x, x_max + padding_x)
         ax.set_ylim(y_min - padding_y, y_max + padding_y)
         ax.set_aspect('equal')
     
-    ax.set_xlabel('z')
+    ax.set_xlabel('x')
     ax.set_ylabel('y', rotation=0)
     ax.set_title(f"Section: {section.name}")
     ax.grid(False)

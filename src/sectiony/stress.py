@@ -44,79 +44,83 @@ class Stress:
     
     Attributes:
         section: The Section object containing geometry and properties.
-        N: Axial force (positive = tension).
-        Vy: Shear force in Y direction (vertical).
-        Vz: Shear force in Z direction (horizontal).
-        Mx: Torsional moment about X axis.
-        My: Bending moment about Y axis (bending in X-Z plane).
-        Mz: Bending moment about Z axis (bending in X-Y plane).
+        N: Axial force along +z (positive = tension).
+        Vx: Shear force in x direction (horizontal).
+        Vy: Shear force in y direction (vertical).
+        Mx: Bending moment about x axis.
+        My: Bending moment about y axis.
+        Mz: Torsional moment about z axis (longitudinal torsion).
     """
     section: Section
     N: float = 0.0
+    Vx: float = 0.0
     Vy: float = 0.0
-    Vz: float = 0.0
     Mx: float = 0.0
     My: float = 0.0
     Mz: float = 0.0
 
-    def sigma_axial(self, y: float, z: float) -> float:
+    def sigma_axial(self, x: float, y: float) -> float:
         """Normal stress due to axial force: σ = N/A."""
         if not self.section.A:
             return 0.0
         return self.N / self.section.A
 
-    def sigma_bending(self, y: float, z: float) -> float:
+    def sigma_bending(self, x: float, y: float) -> float:
         """
         Normal stress due to bending moments.
         
-        Formula: σ = (My * z) / Iy - (Mz * y) / Iz
-        
-        Sign convention: positive Mz compresses positive y fibers.
+        Formula (principal axes, no coupling): σ = -(Mx * y) / Ix - (My * x) / Iy
+
+        Sign convention:
+        - Positive Mx compresses +y fibers (top).
+        - Positive My compresses +x fibers (right).
         """
         sigma = 0.0
+        if self.section.Ix:
+            sigma -= (self.Mx * y) / self.section.Ix
         if self.section.Iy:
-            sigma += (self.My * z) / self.section.Iy
-        if self.section.Iz:
-            sigma -= (self.Mz * y) / self.section.Iz
+            sigma -= (self.My * x) / self.section.Iy
         return sigma
 
-    def sigma(self, y: float, z: float) -> float:
+    def sigma(self, x: float, y: float) -> float:
         """Total normal stress: σ_axial + σ_bending."""
-        return self.sigma_axial(y, z) + self.sigma_bending(y, z)
+        return self.sigma_axial(x, y) + self.sigma_bending(x, y)
 
-    def tau_shear(self, y: float, z: float) -> float:
+    def tau_shear(self, x: float, y: float) -> float:
         """
-        Shear stress due to transverse shear forces (Vy, Vz).
+        Shear stress due to transverse shear forces (Vx, Vy).
         
         NOTE: Approximate average shear stress (V/A).
         Accurate distribution requires shear flow analysis.
         """
         if not self.section.A:
             return 0.0
+        tau_x = self.Vx / self.section.A
         tau_y = self.Vy / self.section.A
-        tau_z = self.Vz / self.section.A
-        return np.sqrt(tau_y**2 + tau_z**2)
+        return np.sqrt(tau_x**2 + tau_y**2)
 
-    def tau_torsion(self, y: float, z: float) -> float:
+    def tau_torsion(self, x: float, y: float) -> float:
         """
-        Shear stress due to torsion (Mx).
+        Shear stress due to torsion (Mz).
         
-        NOTE: Approximate using τ = Mx * r / J.
+        NOTE: Approximate using τ = Mz * r / J.
         Accurate distribution requires solving Poisson's equation.
         """
         if not self.section.J:
             return 0.0
-        r = np.sqrt(y**2 + z**2)
-        return abs(self.Mx * r / self.section.J)
+        cx = self.section.Cx if self.section.Cx is not None else 0.0
+        cy = self.section.Cy if self.section.Cy is not None else 0.0
+        r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+        return abs(self.Mz * r / self.section.J)
 
-    def tau(self, y: float, z: float) -> float:
+    def tau(self, x: float, y: float) -> float:
         """Total shear stress magnitude (conservative sum)."""
-        return self.tau_shear(y, z) + self.tau_torsion(y, z)
+        return self.tau_shear(x, y) + self.tau_torsion(x, y)
 
-    def von_mises(self, y: float, z: float) -> float:
+    def von_mises(self, x: float, y: float) -> float:
         """Von Mises equivalent stress: √(σ² + 3τ²)."""
-        s = self.sigma(y, z)
-        t = self.tau(y, z)
+        s = self.sigma(x, y)
+        t = self.tau(x, y)
         return np.sqrt(s**2 + 3 * t**2)
 
     def get_stress_func(self, stress_type: StressType) -> StressFunc:
@@ -150,7 +154,7 @@ class Stress:
         if not points:
             return 0.0
         func = self.get_stress_func(stress_type)
-        return max(func(y, z) for y, z in points)
+        return max(func(x, y) for x, y in points)
 
     def min(self, stress_type: StressType = "von_mises") -> float:
         """Minimum stress value over geometry vertices."""
@@ -158,28 +162,28 @@ class Stress:
         if not points:
             return 0.0
         func = self.get_stress_func(stress_type)
-        return min(func(y, z) for y, z in points)
+        return min(func(x, y) for x, y in points)
 
-    def at(self, y: float, z: float, stress_type: StressType = "von_mises") -> float:
+    def at(self, x: float, y: float, stress_type: StressType = "von_mises") -> float:
         """Calculate stress at a specific point."""
-        return self.get_stress_func(stress_type)(y, z)
+        return self.get_stress_func(stress_type)(x, y)
 
     def _compute_bounds(self) -> Tuple[float, float, float, float]:
         """Compute bounding box of geometry."""
+        all_xs: List[float] = []
         all_ys: List[float] = []
-        all_zs: List[float] = []
         for contour in self.section.geometry.contours:
-            for y, z in contour.discretize():
+            for x, y in contour.discretize():
+                all_xs.append(x)
                 all_ys.append(y)
-                all_zs.append(z)
-        return min(all_ys), max(all_ys), min(all_zs), max(all_zs)
+        return min(all_xs), max(all_xs), min(all_ys), max(all_ys)
 
-    def _create_mask(self, Y: np.ndarray, Z: np.ndarray) -> np.ndarray:
+    def _create_mask(self, X: np.ndarray, Y: np.ndarray) -> np.ndarray:
         """
         Create mask for points inside solid regions but outside hollow regions.
         Uses Path.contains_points which is accurate for arbitrary polygons.
         """
-        points_flat = np.column_stack((Y.flatten(), Z.flatten()))
+        points_flat = np.column_stack((X.flatten(), Y.flatten()))
         
         solids = [c for c in self.section.geometry.contours if not c.hollow]
         hollows = [c for c in self.section.geometry.contours if c.hollow]
@@ -199,7 +203,7 @@ class Stress:
                 path = Path(pts)
                 is_in_hollow |= path.contains_points(points_flat)
         
-        return (is_in_solid & ~is_in_hollow).reshape(Y.shape)
+        return (is_in_solid & ~is_in_hollow).reshape(X.shape)
 
     def _draw_outlines(self, ax: plt.Axes) -> None:
         """
@@ -266,29 +270,29 @@ class Stress:
         func = self.get_stress_func(stress_type)
         
         # Compute grid bounds
-        min_y, max_y, min_z, max_z = self._compute_bounds()
+        min_x, max_x, min_y, max_y = self._compute_bounds()
         
         # Add a small buffer to ensure we cover the edges
-        dz = max_z - min_z
+        dx = max_x - min_x
         dy = max_y - min_y
-        padding = max(dz, dy) * _PLOT_PADDING_FACTOR
+        padding = max(dx, dy) * _PLOT_PADDING_FACTOR
         if padding == 0:
             padding = 1.0
         
         # Create evaluation grid with higher resolution
-        z_grid = np.linspace(min_z - padding, max_z + padding, _PLOT_RESOLUTION)
+        x_grid = np.linspace(min_x - padding, max_x + padding, _PLOT_RESOLUTION)
         y_grid = np.linspace(min_y - padding, max_y + padding, _PLOT_RESOLUTION)
-        Z, Y = np.meshgrid(z_grid, y_grid)
+        X, Y = np.meshgrid(x_grid, y_grid)
 
         # Compute stress values
-        S = np.vectorize(func)(Y, Z)
+        S = np.vectorize(func)(X, Y)
 
         # Mask points outside geometry
-        mask = self._create_mask(Y, Z)
+        mask = self._create_mask(X, Y)
         S_masked = np.where(mask, S, np.nan)
 
         # Plot contours
-        contour_plot = ax.contourf(Z, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
+        contour_plot = ax.contourf(X, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
         display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
         colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
 
@@ -296,11 +300,11 @@ class Stress:
         self._draw_outlines(ax)
         
         # Set appropriate limits
-        ax.set_xlim(min_z - padding/2, max_z + padding/2)
+        ax.set_xlim(min_x - padding/2, max_x + padding/2)
         ax.set_ylim(min_y - padding/2, max_y + padding/2)
         
         ax.set_aspect('equal')
-        ax.set_xlabel('z')
+        ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_title(f'{display_name} stress')
 

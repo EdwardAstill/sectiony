@@ -70,56 +70,54 @@ def solve_poisson_jacobi(mask: np.ndarray, h: float, max_iter: int = 5000, tol: 
 def solve_warping_jacobi(
     mask: np.ndarray, 
     h: float, 
-    cy: float, 
-    cz: float, 
-    y_vals: np.ndarray, 
-    z_vals: np.ndarray,
+    cx: float,
+    cy: float,
+    x_vals: np.ndarray,
+    y_vals: np.ndarray,
     max_iter: int = 5000, 
     tol: float = 1e-6
 ) -> np.ndarray:
     """
     Solve Laplace equation del^2(omega) = 0 with Neumann BCs for warping function.
     
-    BC: d(omega)/dn = y*nz - z*ny
-    (Using coordinates relative to centroid)
+    BC: d(omega)/dn = x*n_y - y*n_x
+    (Using coordinates relative to centroid, for torsion about the out-of-plane z axis.)
     
     Args:
         mask: Boolean array (True inside section)
         h: Grid spacing
-        cy, cz: Centroid coordinates
+        cx, cy: Centroid coordinates
+        x_vals: Array of x coordinates for cols
         y_vals: Array of y coordinates for rows
-        z_vals: Array of z coordinates for cols
         
     Returns:
         omega: Solution array
     """
-    ny, nz = mask.shape
-    omega = np.zeros((ny, nz), dtype=np.float64)
-    omega_new = np.zeros((ny, nz), dtype=np.float64)
+    ny, nx = mask.shape
+    omega = np.zeros((ny, nx), dtype=np.float64)
+    omega_new = np.zeros((ny, nx), dtype=np.float64)
     
     # Pre-calculate coordinates relative to centroid
-    # Y varies along rows (axis 0), Z varies along cols (axis 1)
-    # y_vals corresponds to axis 0 indices
-    # z_vals corresponds to axis 1 indices
-    Y, Z = np.meshgrid(y_vals, z_vals, indexing='ij')
+    # Y varies along rows (axis 0), X varies along cols (axis 1)
+    Y, X = np.meshgrid(y_vals, x_vals, indexing='ij')
+    Xc = X - cx
     Yc = Y - cy
-    Zc = Z - cz
     
     # Pre-compute boundary fluxes for each direction
-    # Flux q = y*nz - z*ny
-    # Top neighbor (y-h): n=(-1, 0) -> q = y(0) - z(-1) = z
-    # Bottom neighbor (y+h): n=(1, 0) -> q = y(0) - z(1) = -z
-    # Left neighbor (z-h): n=(0, -1) -> q = y(-1) - z(0) = -y
-    # Right neighbor (z+h): n=(0, 1) -> q = y(1) - z(0) = y
+    # Flux q = x*n_y - y*n_x
+    # Top neighbor (y-h): n=(0, -1) -> q = -x
+    # Bottom neighbor (y+h): n=(0, +1) -> q = +x
+    # Left neighbor (x-h): n=(-1, 0) -> q = +y
+    # Right neighbor (x+h): n=(+1, 0) -> q = -y
     
     # Flux * h terms to add to center value
     # If neighbor is missing, we use ghost point: omega_neighbor = omega_self + h*q
     # So we add h*q to the sum in the update rule
     
-    flux_top = Zc * h
-    flux_bottom = -Zc * h
-    flux_left = -Yc * h
-    flux_right = Yc * h
+    flux_top = -Xc * h
+    flux_bottom = Xc * h
+    flux_left = Yc * h
+    flux_right = -Yc * h
     
     # Identify interior and boundary cells
     # We only update cells within the mask

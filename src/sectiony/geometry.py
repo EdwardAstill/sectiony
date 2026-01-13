@@ -9,7 +9,7 @@ import warnings
 _SCHEMA_VERSION = 1
 
 # Type alias for points
-Point = Tuple[float, float]
+Point = Tuple[float, float]  # (x, y)
 
 
 @dataclass
@@ -76,7 +76,7 @@ class Line:
 class Arc:
     """
     A circular arc defined by center, radius, and angles.
-    Angles in radians: 0 is +z (Right), pi/2 is +y (Up).
+    Angles in radians: 0 is +x (Right), pi/2 is +y (Up).
     """
     center: Point
     radius: float
@@ -108,21 +108,21 @@ class Arc:
         n = max(n, resolution) 
 
         points = []
-        cy, cz = self.center
+        cx, cy = self.center
         for i in range(n + 1):
             theta = self.start_angle + (self.end_angle - self.start_angle) * i / n
+            x = cx + self.radius * math.cos(theta)
             y = cy + self.radius * math.sin(theta)
-            z = cz + self.radius * math.cos(theta)
-            points.append((y, z))
+            points.append((x, y))
         return points
 
     def point_at(self, t: float) -> Point:
         """Get point at parameter t (0.0 to 1.0)."""
         theta = self.start_angle + (self.end_angle - self.start_angle) * t
-        cy, cz = self.center
+        cx, cy = self.center
+        x = cx + self.radius * math.cos(theta)
         y = cy + self.radius * math.sin(theta)
-        z = cz + self.radius * math.cos(theta)
-        return (y, z)
+        return (x, y)
 
     @property
     def length(self) -> float:
@@ -130,16 +130,16 @@ class Arc:
         return self.radius * abs(self.end_angle - self.start_angle)
 
     def start_point(self) -> Point:
-        cy, cz = self.center
+        cx, cy = self.center
+        x = cx + self.radius * math.cos(self.start_angle)
         y = cy + self.radius * math.sin(self.start_angle)
-        z = cz + self.radius * math.cos(self.start_angle)
-        return (y, z)
+        return (x, y)
 
     def end_point(self) -> Point:
-        cy, cz = self.center
+        cx, cy = self.center
+        x = cx + self.radius * math.cos(self.end_angle)
         y = cy + self.radius * math.sin(self.end_angle)
-        z = cz + self.radius * math.cos(self.end_angle)
-        return (y, z)
+        return (x, y)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -176,7 +176,7 @@ class Arc:
         num_segments = max(1, int(math.ceil(abs(angle_span) / (math.pi / 2))))
         segment_angle = angle_span / num_segments
         
-        cy, cz = self.center
+        cx, cy = self.center
         r = self.radius
         
         for i in range(num_segments):
@@ -190,32 +190,30 @@ class Arc:
                 k = -k
             
             # Start and end points on arc
-            # y = r*sin(theta), z = r*cos(theta) relative to center
+            # x = r*cos(theta), y = r*sin(theta) relative to center
+            p0_x = cx + r * math.cos(a1)
             p0_y = cy + r * math.sin(a1)
-            p0_z = cz + r * math.cos(a1)
+            p3_x = cx + r * math.cos(a2)
             p3_y = cy + r * math.sin(a2)
-            p3_z = cz + r * math.cos(a2)
             
-            # Tangent directions (perpendicular to radius)
-            # At angle theta: tangent direction is (cos(theta), -sin(theta)) for CCW
-            # For our coord system where y=sin, z=cos:
-            # dy/dtheta = r*cos(theta), dz/dtheta = -r*sin(theta)
+            # Tangent directions (perpendicular to radius), CCW
+            # dx/dtheta = -r*sin(theta), dy/dtheta = r*cos(theta)
+            t1_x = -r * math.sin(a1)
             t1_y = r * math.cos(a1)
-            t1_z = -r * math.sin(a1)
+            t2_x = -r * math.sin(a2)
             t2_y = r * math.cos(a2)
-            t2_z = -r * math.sin(a2)
             
             # Control points
+            p1_x = p0_x + k * t1_x
             p1_y = p0_y + k * t1_y
-            p1_z = p0_z + k * t1_z
+            p2_x = p3_x - k * t2_x
             p2_y = p3_y - k * t2_y
-            p2_z = p3_z - k * t2_z
             
             beziers.append(CubicBezier(
-                p0=(p0_y, p0_z),
-                p1=(p1_y, p1_z),
-                p2=(p2_y, p2_z),
-                p3=(p3_y, p3_z)
+                p0=(p0_x, p0_y),
+                p1=(p1_x, p1_y),
+                p2=(p2_x, p2_y),
+                p3=(p3_x, p3_y)
             ))
         
         return beziers

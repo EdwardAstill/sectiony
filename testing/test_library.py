@@ -38,8 +38,8 @@ class TestLibrary(unittest.TestCase):
         
         # Area tolerance for discretized circle
         self.assertAlmostEqual(sec.A, expected_A, delta=expected_A * 0.02)  # 2% tolerance
+        self.assertAlmostEqual(sec.Ix, expected_I, delta=expected_I * 0.02)
         self.assertAlmostEqual(sec.Iy, expected_I, delta=expected_I * 0.02)
-        self.assertAlmostEqual(sec.Iz, expected_I, delta=expected_I * 0.02) 
         
         # Note: Grid-based J calculation has known limitations for hollow sections
         # (requires different boundary conditions on inner vs outer boundaries)
@@ -47,12 +47,12 @@ class TestLibrary(unittest.TestCase):
 
         # Radius of Gyration
         expected_r = math.sqrt(expected_I / expected_A)
+        self.assertAlmostEqual(sec.rx, expected_r, delta=expected_r * 0.02)
         self.assertAlmostEqual(sec.ry, expected_r, delta=expected_r * 0.02)
-        self.assertAlmostEqual(sec.rz, expected_r, delta=expected_r * 0.02)
 
     def test_rhs_sharp(self):
         # RHS with radius 0 is just a hollow rectangle
-        b = 10.0 # Width (z)
+        b = 10.0 # Width (x)
         h = 20.0 # Height (y)
         t = 1.0
         r = 0.0
@@ -60,32 +60,32 @@ class TestLibrary(unittest.TestCase):
         
         expected_A = (b * h) - ((b - 2*t) * (h - 2*t))
         
-        # Iy (about Y)
+        # Iy (about Y): ∫x^2 dA
         expected_Iy = (h * b**3 / 12) - ((h - 2*t) * (b - 2*t)**3 / 12)
         
-        # Iz (about Z)
-        expected_Iz = (b * h**3 / 12) - ((b - 2*t) * (h - 2*t)**3 / 12)
+        # Ix (about X): ∫y^2 dA
+        expected_Ix = (b * h**3 / 12) - ((b - 2*t) * (h - 2*t)**3 / 12)
         
         print(f"  - RHS {b}x{h}x{t} (sharp)")
         print(f"  - A: {sec.A:.4f} vs {expected_A:.4f}")
         print(f"  - Iy (about Y): {sec.Iy:.4f} vs {expected_Iy:.4f}")
-        print(f"  - Iz (about Z): {sec.Iz:.4f} vs {expected_Iz:.4f}")
+        print(f"  - Ix (about X): {sec.Ix:.4f} vs {expected_Ix:.4f}")
         
         self.assertAlmostEqual(sec.A, expected_A, places=5)
+        self.assertAlmostEqual(sec.Ix, expected_Ix, places=5)
         self.assertAlmostEqual(sec.Iy, expected_Iy, places=5)
-        self.assertAlmostEqual(sec.Iz, expected_Iz, places=5)
         
         # Check Elastic Modulus S = I / y_max
-        expected_Sz = expected_Iz / (h/2)
-        self.assertAlmostEqual(sec.Sz, expected_Sz, places=5)
+        expected_Sx = expected_Ix / (h/2)
+        self.assertAlmostEqual(sec.Sx, expected_Sx, places=5)
         
         expected_Sy = expected_Iy / (b/2)
         self.assertAlmostEqual(sec.Sy, expected_Sy, places=5)
         
         # Plastic Modulus Zpl
-        expected_Zpl_z = (b * h**2 / 4) - ((b - 2*t) * (h - 2*t)**2 / 4)
-        print(f"  - Zpl_z (Grid): {sec.Zpl_z:.4f} vs {expected_Zpl_z:.4f}")
-        self.assertAlmostEqual(sec.Zpl_z, expected_Zpl_z, delta=expected_Zpl_z * 0.05)
+        expected_Zpl_x = (b * h**2 / 4) - ((b - 2*t) * (h - 2*t)**2 / 4)
+        print(f"  - Zpl_x (Grid): {sec.Zpl_x:.4f} vs {expected_Zpl_x:.4f}")
+        self.assertAlmostEqual(sec.Zpl_x, expected_Zpl_x, delta=expected_Zpl_x * 0.05)
 
     def test_rhs_rounded(self):
         b = 100.0
@@ -113,7 +113,7 @@ class TestLibrary(unittest.TestCase):
 
     def test_i(self):
         d = 100.0 # Height (y)
-        b = 50.0  # Width (z)
+        b = 50.0  # Width (x)
         tf = 10.0
         tw = 5.0
         r = 0.0
@@ -121,25 +121,25 @@ class TestLibrary(unittest.TestCase):
         
         expected_A = 2 * (b * tf) + (d - 2*tf) * tw
         
-        # Strong Axis is Iz
-        expected_Iz_strong = (b * d**3 - (b - tw) * (d - 2*tf)**3) / 12
+        # Strong Axis is Ix (depth is in y)
+        expected_Ix_strong = (b * d**3 - (b - tw) * (d - 2*tf)**3) / 12
         
         # J for open I section (approximate)
         expected_J = 2 * (1/3 * b * tf**3) + 1/3 * (d - 2*tf) * tw**3
         
         print(f"  - I {d}x{b} (sharp)")
         print(f"  - A: {sec.A:.4f} vs {expected_A:.4f}")
-        print(f"  - Iz (Strong): {sec.Iz:.4f} vs {expected_Iz_strong:.4f}")
+        print(f"  - Ix (Strong): {sec.Ix:.4f} vs {expected_Ix_strong:.4f}")
         print(f"  - J (Grid): {sec.J:.4f} vs {expected_J:.4f} (Approx open section)")
         
         self.assertAlmostEqual(sec.A, expected_A, places=5)
-        self.assertAlmostEqual(sec.Iz, expected_Iz_strong, places=5)
+        self.assertAlmostEqual(sec.Ix, expected_Ix_strong, places=5)
         
         # J check - loose tolerance as open section J is tricky
         self.assertAlmostEqual(sec.J, expected_J, delta=expected_J * 0.25)
 
     def test_u(self):
-        b = 50.0 # Total width (z)
+        b = 50.0 # Total width (x)
         h = 100.0 # Total height (y)
         tw = 5.0  # Web thickness
         tf = 5.0  # Flange thickness

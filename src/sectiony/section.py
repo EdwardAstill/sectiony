@@ -12,23 +12,23 @@ class Section:
     """
     name: str
     A: Optional[float] = None
+    Cx: Optional[float] = None
     Cy: Optional[float] = None
-    Cz: Optional[float] = None
+    Ix: Optional[float] = None
     Iy: Optional[float] = None
-    Iz: Optional[float] = None
-    Iyz: Optional[float] = None
+    Ixy: Optional[float] = None
     J: Optional[float] = None
+    Sx: Optional[float] = None
     Sy: Optional[float] = None
-    Sz: Optional[float] = None
+    rx: Optional[float] = None
     ry: Optional[float] = None
-    rz: Optional[float] = None
+    x_max: Optional[float] = None
     y_max: Optional[float] = None
-    z_max: Optional[float] = None
+    Zpl_x: Optional[float] = None
     Zpl_y: Optional[float] = None
-    Zpl_z: Optional[float] = None
     Cw: Optional[float] = None  # Warping constant
+    SCx: Optional[float] = None  # Shear center x-coordinate
     SCy: Optional[float] = None  # Shear center y-coordinate
-    SCz: Optional[float] = None  # Shear center z-coordinate
     geometry: Optional[Geometry] = None
     dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
@@ -37,12 +37,12 @@ class Section:
         from .plotter import plot_section
         return plot_section(self, ax=ax, show=show)
 
-    def calculate_stress(self, N=0.0, Vy=0.0, Vz=0.0, Mx=0.0, My=0.0, Mz=0.0):
+    def calculate_stress(self, N: float = 0.0, Vx: float = 0.0, Vy: float = 0.0, Mx: float = 0.0, My: float = 0.0, Mz: float = 0.0):
         """
         Create a Stress object for this section with the specified internal forces.
         """
         from .stress import Stress
-        return Stress(self, N=N, Vy=Vy, Vz=Vz, Mx=Mx, My=My, Mz=Mz)
+        return Stress(self, N=N, Vx=Vx, Vy=Vy, Mx=Mx, My=My, Mz=Mz)
 
     def discretize_uniform(self, count: int = 100) -> List[Tuple[List[Tuple[float, float]], bool]]:
         """
@@ -77,20 +77,20 @@ class Section:
     def _apply_properties_from_geometry(self):
         props: SectionProperties = self.geometry.calculate_properties()
         self.A = props.A
+        self.Cx = props.Cx
         self.Cy = props.Cy
-        self.Cz = props.Cz
+        self.Ix = props.Ix
         self.Iy = props.Iy
-        self.Iz = props.Iz
-        self.Iyz = props.Iyz
+        self.Ixy = props.Ixy
         self.J = props.J
+        self.Sx = props.Sx
         self.Sy = props.Sy
-        self.Sz = props.Sz
+        self.rx = props.rx
         self.ry = props.ry
-        self.rz = props.rz
+        self.x_max = props.x_max
         self.y_max = props.y_max
-        self.z_max = props.z_max
+        self.Zpl_x = props.Zpl_x
         self.Zpl_y = props.Zpl_y
-        self.Zpl_z = props.Zpl_z
         self.Cw = props.Cw
+        self.SCx = props.SCx
         self.SCy = props.SCy
-        self.SCz = props.SCz

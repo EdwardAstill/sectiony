@@ -82,23 +82,22 @@ def _process_entity(entity_type: str, data: Dict[int, List[Any]]) -> Optional[Co
     try:
         if entity_type == 'LINE':
             # LINE: 10, 20 (start), 11, 21 (end)
-            x1 = float(data.get(10, ['0'])[0])
-            y1 = float(data.get(20, ['0'])[0])
-            x2 = float(data.get(11, ['0'])[0])
-            y2 = float(data.get(21, ['0'])[0])
+            x1 = float((data[10] if 10 in data else ['0'])[0])
+            y1 = float((data[20] if 20 in data else ['0'])[0])
+            x2 = float((data[11] if 11 in data else ['0'])[0])
+            y2 = float((data[21] if 21 in data else ['0'])[0])
             
-            # Swap x/y to map DXF(X,Y) -> Section(Y,Z)
-            # This ensures Plotter(Z,Y) shows DXF(X,Y) orientation
-            line = Line(start=(y1, x1), end=(y2, x2))
+            # DXF is already in the section plane: (x, y)
+            line = Line(start=(x1, y1), end=(x2, y2))
             return Contour(segments=[line], hollow=False)
             
         elif entity_type == 'ARC':
             # ARC: 10, 20 (center), 40 (radius), 50 (start angle deg), 51 (end angle deg)
-            cx = float(data.get(10, ['0'])[0])
-            cy = float(data.get(20, ['0'])[0])
-            r = float(data.get(40, ['0'])[0])
-            start_deg = float(data.get(50, ['0'])[0])
-            end_deg = float(data.get(51, ['0'])[0])
+            cx = float((data[10] if 10 in data else ['0'])[0])
+            cy = float((data[20] if 20 in data else ['0'])[0])
+            r = float((data[40] if 40 in data else ['0'])[0])
+            start_deg = float((data[50] if 50 in data else ['0'])[0])
+            end_deg = float((data[51] if 51 in data else ['0'])[0])
             
             # Convert degrees to radians
             start_rad = math.radians(start_deg)
@@ -108,16 +107,16 @@ def _process_entity(entity_type: str, data: Dict[int, List[Any]]) -> Optional[Co
             if end_rad <= start_rad:
                 end_rad += 2 * math.pi
                 
-            # Swap cx/cy. Angles match because Arc 0 is +Z (DXF +X), 90 is +Y (DXF +Y)
-            arc = Arc(center=(cy, cx), radius=r, start_angle=start_rad, end_angle=end_rad)
+            # DXF is already in the section plane: (x, y), with 0 along +x, CCW.
+            arc = Arc(center=(cx, cy), radius=r, start_angle=start_rad, end_angle=end_rad)
             return Contour(segments=[arc], hollow=False)
             
         elif entity_type == 'LWPOLYLINE':
             # LWPOLYLINE: 10, 20 (vertices), 42 (bulge factors)
             # 70 (flags): 1 = closed
             
-            xs = [float(x) for x in data.get(10, [])]
-            ys = [float(y) for y in data.get(20, [])]
+            xs = [float(x) for x in (data[10] if 10 in data else [])]
+            ys = [float(y) for y in (data[20] if 20 in data else [])]
             
             if len(xs) != len(ys):
                 return None
@@ -211,8 +210,7 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
                 elif c == 20: y1 = float(v)
                 elif c == 11: x2 = float(v)
                 elif c == 21: y2 = float(v)
-            # Swap x/y
-            return Contour(segments=[Line((y1, x1), (y2, x2))], hollow=False)
+            return Contour(segments=[Line((x1, y1), (x2, y2))], hollow=False)
             
         elif entity_type == 'ARC':
             cx = cy = r = start = end = 0.0
@@ -228,8 +226,7 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
             if end_rad <= start_rad:
                 end_rad += 2 * math.pi
             
-            # Swap cx/cy
-            return Contour(segments=[Arc((cy, cx), r, start_rad, end_rad)], hollow=False)
+            return Contour(segments=[Arc((cx, cy), r, start_rad, end_rad)], hollow=False)
             
         elif entity_type == 'LWPOLYLINE':
             # Need to process vertices in order
@@ -254,8 +251,7 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
                     # New vertex starts with x coord (usually)
                     # Push previous vertex if exists
                     if curr_x is not None and curr_y is not None:
-                        # Swap x/y
-                        points.append((curr_y, curr_x))
+                        points.append((curr_x, curr_y))
                         bulges.append(curr_bulge)
                     curr_x = float(v)
                     curr_y = None # Reset y
@@ -267,8 +263,7 @@ def _process_entity_pairs(entity_type: str, pairs: List[Tuple[int, str]]) -> Opt
             
             # Push last vertex
             if curr_x is not None and curr_y is not None:
-                # Swap x/y
-                points.append((curr_y, curr_x))
+                points.append((curr_x, curr_y))
                 bulges.append(curr_bulge)
                 
             if len(points) < 2:
@@ -612,38 +607,15 @@ def write_dxf(file_path: str, contours: List[Contour]) -> None:
 
 def _write_line(f, line: Line):
     f.write("0\nLINE\n8\n0\n")
-    # Swap x/y to map Section(Y,Z) -> DXF(X,Y)
-    # Section Y -> DXF Y
-    # Section Z -> DXF X
-    f.write(f"10\n{line.start[1]}\n20\n{line.start[0]}\n")
-    f.write(f"11\n{line.end[1]}\n21\n{line.end[0]}\n")
+    f.write(f"10\n{line.start[0]}\n20\n{line.start[1]}\n")
+    f.write(f"11\n{line.end[0]}\n21\n{line.end[1]}\n")
 
 def _write_arc(f, arc: Arc):
-    # Convert Sectiony Arc (y, z, theta=0 is +z) to DXF Arc (x, y, theta=0 is +x)
-    # Sectiony: y = cx + r*sin(t), z = cz + r*cos(t)
-    # DXF: x = cx + r*cos(d), y = cy + r*sin(d)
-    
-    # Mapping: DXF X = Sectiony Z, DXF Y = Sectiony Y
-    # x(t) = cz + r*cos(t)  (Section Z -> DXF X)
-    # y(t) = cy + r*sin(t)  (Section Y -> DXF Y)
-    
-    # We need to find DXF angle 'd' such that:
-    # cx_dxf + r*cos(d) = cz_sect + r*cos(t)
-    # cy_dxf + r*sin(d) = cy_sect + r*sin(t)
-    # (Assuming centers match: cx_dxf = cz_sect, cy_dxf = cy_sect)
-    # cos(d) = cos(t)
-    # sin(d) = sin(t)
-    # So d = t !
-    
-    # Angles match directly because Arc 0 (+Z) maps to DXF 0 (+X).
-    # And Arc 90 (+Y) maps to DXF 90 (+Y).
-    
     start_d = math.degrees(arc.start_angle)
     end_d = math.degrees(arc.end_angle)
     
     f.write("0\nARC\n8\n0\n")
-    # Center: cx_dxf = cz, cy_dxf = cy
-    f.write(f"10\n{arc.center[1]}\n20\n{arc.center[0]}\n")
+    f.write(f"10\n{arc.center[0]}\n20\n{arc.center[1]}\n")
     f.write(f"40\n{arc.radius}\n")
     f.write(f"50\n{start_d}\n")
     f.write(f"51\n{end_d}\n")

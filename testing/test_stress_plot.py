@@ -40,29 +40,29 @@ class TestStressCalculations(unittest.TestCase):
         self.assertAlmostEqual(stress.sigma_axial(0, 0), stress.sigma_axial(5, 5))
         self.assertAlmostEqual(stress.sigma_axial(0, 0), stress.sigma_axial(-5, -5))
 
-    def test_sigma_bending_mz(self):
-        stress = Stress(self.square_section, Mz=1000.0)
-        # sigma = -Mz * y / Iz
-        # At y=5: sigma = -1000 * 5 / Iz (compression at top)
-        # At y=-5: sigma = -1000 * (-5) / Iz (tension at bottom)
-        sigma_top = stress.sigma_bending(5, 0)
-        sigma_bottom = stress.sigma_bending(-5, 0)
+    def test_sigma_bending_mx(self):
+        stress = Stress(self.square_section, Mx=1000.0)
+        # sigma = -(Mx * y) / Ix
+        # At y=5: compression (negative)
+        # At y=-5: tension (positive)
+        sigma_top = stress.sigma_bending(0, 5)
+        sigma_bottom = stress.sigma_bending(0, -5)
         self.assertLess(sigma_top, 0)  # Compression at top
         self.assertGreater(sigma_bottom, 0)  # Tension at bottom
         self.assertAlmostEqual(sigma_top, -sigma_bottom)  # Symmetric
 
     def test_sigma_bending_my(self):
         stress = Stress(self.square_section, My=1000.0)
-        # sigma = My * z / Iy
-        sigma_left = stress.sigma_bending(0, -5)
-        sigma_right = stress.sigma_bending(0, 5)
-        self.assertLess(sigma_left, 0)
-        self.assertGreater(sigma_right, 0)
+        # sigma = -(My * x) / Iy
+        sigma_left = stress.sigma_bending(-5, 0)
+        sigma_right = stress.sigma_bending(5, 0)
+        self.assertGreater(sigma_left, 0)
+        self.assertLess(sigma_right, 0)
         self.assertAlmostEqual(sigma_left, -sigma_right)
 
     def test_sigma_combined(self):
-        stress = Stress(self.square_section, N=1000.0, Mz=500.0)
-        # Total sigma = N/A - Mz*y/Iz
+        stress = Stress(self.square_section, N=1000.0, Mx=500.0)
+        # Total sigma = N/A - Mx*y/Ix
         sigma = stress.sigma(0, 0)
         # At centroid, bending stress = 0
         self.assertAlmostEqual(sigma, 10.0, places=5)
@@ -74,13 +74,13 @@ class TestStressCalculations(unittest.TestCase):
         self.assertAlmostEqual(tau, 1.0, places=5)
 
     def test_tau_shear_combined(self):
-        stress = Stress(self.square_section, Vy=60.0, Vz=80.0)
+        stress = Stress(self.square_section, Vx=60.0, Vy=80.0)
         # tau = sqrt(60^2 + 80^2) / 100 = 100/100 = 1
         tau = stress.tau_shear(0, 0)
         self.assertAlmostEqual(tau, 1.0, places=5)
 
     def test_tau_torsion(self):
-        stress = Stress(self.square_section, Mx=1000.0)
+        stress = Stress(self.square_section, Mz=1000.0)
         # At centroid (r=0), torsion stress = 0
         tau_center = stress.tau_torsion(0, 0)
         self.assertAlmostEqual(tau_center, 0.0, places=5)
@@ -121,7 +121,7 @@ class TestStressMinMax(unittest.TestCase):
         self.assertAlmostEqual(stress.min("sigma_axial"), 10.0)
 
     def test_max_bending(self):
-        stress = Stress(self.section, Mz=1000.0)
+        stress = Stress(self.section, Mx=1000.0)
         max_sigma = stress.max("sigma_bending")
         min_sigma = stress.min("sigma_bending")
         # Max and min should be at opposite corners
@@ -149,33 +149,33 @@ class TestStressPlot(unittest.TestCase):
         plt.close('all')
 
     def test_plot_returns_axes(self):
-        stress = Stress(self.section, Mz=1000.0)
+        stress = Stress(self.section, Mx=1000.0)
         ax = stress.plot(show=False)
         self.assertIsNotNone(ax)
 
     def test_plot_von_mises(self):
-        stress = Stress(self.section, N=1000.0, Mz=500.0)
+        stress = Stress(self.section, N=1000.0, Mx=500.0)
         ax = stress.plot(stress_type="von_mises", show=False)
         self.assertIsNotNone(ax)
 
     def test_plot_sigma(self):
-        stress = Stress(self.section, Mz=1000.0)
+        stress = Stress(self.section, Mx=1000.0)
         ax = stress.plot(stress_type="sigma", show=False)
         self.assertIsNotNone(ax)
 
     def test_plot_tau(self):
-        stress = Stress(self.section, Vy=100.0, Mx=500.0)
+        stress = Stress(self.section, Vy=100.0, Mz=500.0)
         ax = stress.plot(stress_type="tau", show=False)
         self.assertIsNotNone(ax)
 
     def test_plot_with_custom_axes(self):
         fig, ax = plt.subplots()
-        stress = Stress(self.section, Mz=1000.0)
+        stress = Stress(self.section, Mx=1000.0)
         returned_ax = stress.plot(ax=ax, show=False)
         self.assertIs(returned_ax, ax)
 
     def test_plot_with_cmap(self):
-        stress = Stress(self.section, Mz=1000.0)
+        stress = Stress(self.section, Mx=1000.0)
         ax = stress.plot(cmap="coolwarm", show=False)
         self.assertIsNotNone(ax)
 
@@ -213,7 +213,7 @@ class TestStressHollowSection(unittest.TestCase):
         self.assertAlmostEqual(stress.sigma_axial(0, 0), 10.0)
 
     def test_hollow_plot(self):
-        stress = Stress(self.section, Mz=1000.0)
+        stress = Stress(self.section, Mx=1000.0)
         ax = stress.plot(show=False)
         self.assertIsNotNone(ax)
 

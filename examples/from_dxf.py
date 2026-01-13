@@ -40,8 +40,8 @@ def save_plot(section: Section, filename: str) -> None:
         title_parts.append(f"A={section.A:.1f} mm²")
     if section.Iy is not None:
         title_parts.append(f"Iy={section.Iy:.1e} mm⁴")
-    if section.Iz is not None:
-        title_parts.append(f"Iz={section.Iz:.1e} mm⁴")
+    if section.Ix is not None:
+        title_parts.append(f"Ix={section.Ix:.1e} mm⁴")
     
     ax.set_title("\n".join(title_parts), fontsize=10)
     output_path = GALLERY_DIR / f"{filename}.svg"
@@ -85,7 +85,7 @@ def main() -> None:
         
         print(f"\n   Created section: {section.name}")
         print(f"   Area: {section.A:.2f} mm²")
-        print(f"   Centroid: ({section.Cy:.2f}, {section.Cz:.2f})")
+        print(f"   Centroid: ({section.Cx:.2f}, {section.Cy:.2f})")
         
         # Save plot to gallery
         print(f"\n   Generating plot...")

@@ -45,8 +45,8 @@ section = Section(name="Rectangle 100x50", geometry=geometry)
 
 # Properties are automatically calculated
 print(f"Area: {section.A:.2f} mm²")
-print(f"Iy: {section.Iy:.2e} mm⁴")
-print(f"Centroid: ({section.Cy:.2f}, {section.Cz:.2f})")
+print(f"Ix: {section.Ix:.2e} mm⁴")
+print(f"Centroid: ({section.Cx:.2f}, {section.Cy:.2f})")
 ```
 
 **Shortcut for simple polygons:**
@@ -99,14 +99,14 @@ section = rhs(b=100, h=200, t=10, r=15)
 
 # Geometric properties
 print(section.A)         # Area
-print(section.Cy, section.Cz)  # Centroid
-print(section.Iy, section.Iz, section.Iyz)  # Second moments of area
+print(section.Cx, section.Cy)  # Centroid
+print(section.Ix, section.Iy, section.Ixy)  # Second moments of area
 print(section.J)         # Torsion constant
-print(section.SCy, section.SCz)  # Shear center
+print(section.SCx, section.SCy)  # Shear center
 
 # Section moduli
-print(section.Sy, section.Sz)          # Elastic section moduli
-print(section.Zpl_y, section.Zpl_z)    # Plastic section moduli
+print(section.Sx, section.Sy)          # Elastic section moduli
+print(section.Zpl_x, section.Zpl_y)    # Plastic section moduli
 ```
 
 ### Discretization
@@ -146,11 +146,11 @@ plt.show()
 # Units: N, mm → MPa
 stress = section.calculate_stress(
     N=50e3,    # 50 kN tension
-    Vy=20e3,   # 20 kN shear
-    Vz=10e3,   # 10 kN shear
-    Mx=5e6,    # 5 kNm torsion
-    My=10e6,   # 10 kNm bending
-    Mz=20e6    # 20 kNm bending
+    Vx=10e3,   # 10 kN shear (x)
+    Vy=20e3,   # 20 kN shear (y)
+    Mz=5e6,    # 5 kNm torsion (about z)
+    Mx=10e6,   # 10 kNm bending (about x)
+    My=20e6    # 20 kNm bending (about y)
 )
 
 # Visualize stress distributions
@@ -158,16 +158,17 @@ stress.plot(stress_type="von_mises", show=True)
 stress.plot(stress_type="sigma", show=True)
 
 # Query stress at specific points
-vm_stress = stress.at(y=50, z=0, stress_type="von_mises")
+vm_stress = stress.at(x=50, y=0, stress_type="von_mises")
 ```
 
 See [Stress Analysis](stress.md) for details on stress calculations and visualization.
 
 ## Coordinate System
 
+- **x-axis**: Horizontal (Positive Right)
 - **y-axis**: Vertical (Positive Up)
-- **z-axis**: Horizontal (Positive Right)
-- Points: `(y, z)`
+- **z-axis**: Longitudinal (Positive Out of Plane/Towards Viewer)
+- Points: `(x, y)`
 
 ## Next Steps
 

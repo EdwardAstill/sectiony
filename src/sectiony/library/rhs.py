@@ -8,7 +8,7 @@ def rhs(b: float, h: float, t: float, r: float) -> Section:
     Rectangular Hollow Section with native curve geometry.
     
     Args:
-        b: Width (z-direction)
+        b: Width (x-direction)
         h: Height (y-direction)
         t: Wall thickness
         r: Outer corner radius
@@ -43,43 +43,43 @@ def _rounded_rect_segments(h: float, b: float, r: float):
     use_corners = r > 1e-9
     
     # Half dimensions
-    half_h = h / 2
-    half_b = b / 2
+    half_y = h / 2
+    half_x = b / 2
     
     if use_corners:
         # Corner centers (distance from origin to corner arc center)
-        cy = half_h - r  # y-distance
-        cz = half_b - r  # z-distance
+        cx = half_x - r  # x-distance
+        cy = half_y - r  # y-distance
         
         # Start at right side of top-right corner, go CCW
-        # Top-Right Corner arc (0 to 90 deg)
-        segments.append(Arc(center=(cy, cz), radius=r, start_angle=0, end_angle=math.pi/2))
+        # Top-Right Corner arc (0 to 90 deg): right -> top
+        segments.append(Arc(center=(cx, cy), radius=r, start_angle=0.0, end_angle=math.pi / 2))
         
-        # Top edge
-        segments.append(Line(start=(half_h, cz), end=(half_h, -cz)))
+        # Top edge: from top-right arc end -> top-left arc start
+        segments.append(Line(start=(cx, half_y), end=(-cx, half_y)))
         
-        # Top-Left Corner arc (90 to 180 deg)
-        segments.append(Arc(center=(cy, -cz), radius=r, start_angle=math.pi/2, end_angle=math.pi))
+        # Top-Left Corner arc (90 to 180 deg): top -> left
+        segments.append(Arc(center=(-cx, cy), radius=r, start_angle=math.pi / 2, end_angle=math.pi))
         
-        # Left edge
-        segments.append(Line(start=(cy, -half_b), end=(-cy, -half_b)))
+        # Left edge: from top-left arc end -> bottom-left arc start
+        segments.append(Line(start=(-half_x, cy), end=(-half_x, -cy)))
         
-        # Bottom-Left Corner arc (180 to 270 deg)
-        segments.append(Arc(center=(-cy, -cz), radius=r, start_angle=math.pi, end_angle=3*math.pi/2))
+        # Bottom-Left Corner arc (180 to 270 deg): left -> bottom
+        segments.append(Arc(center=(-cx, -cy), radius=r, start_angle=math.pi, end_angle=3 * math.pi / 2))
         
-        # Bottom edge
-        segments.append(Line(start=(-half_h, -cz), end=(-half_h, cz)))
+        # Bottom edge: from bottom-left arc end -> bottom-right arc start
+        segments.append(Line(start=(-cx, -half_y), end=(cx, -half_y)))
         
-        # Bottom-Right Corner arc (270 to 360 deg)
-        segments.append(Arc(center=(-cy, cz), radius=r, start_angle=3*math.pi/2, end_angle=2*math.pi))
+        # Bottom-Right Corner arc (270 to 360 deg): bottom -> right
+        segments.append(Arc(center=(cx, -cy), radius=r, start_angle=3 * math.pi / 2, end_angle=2 * math.pi))
         
-        # Right edge (back to start)
-        segments.append(Line(start=(-cy, half_b), end=(cy, half_b)))
+        # Right edge: from bottom-right arc end -> top-right arc start
+        segments.append(Line(start=(half_x, -cy), end=(half_x, cy)))
     else:
         # Sharp corners - simple rectangle
-        segments.append(Line(start=(half_h, half_b), end=(half_h, -half_b)))
-        segments.append(Line(start=(half_h, -half_b), end=(-half_h, -half_b)))
-        segments.append(Line(start=(-half_h, -half_b), end=(-half_h, half_b)))
-        segments.append(Line(start=(-half_h, half_b), end=(half_h, half_b)))
+        segments.append(Line(start=(half_x, half_y), end=(-half_x, half_y)))
+        segments.append(Line(start=(-half_x, half_y), end=(-half_x, -half_y)))
+        segments.append(Line(start=(-half_x, -half_y), end=(half_x, -half_y)))
+        segments.append(Line(start=(half_x, -half_y), end=(half_x, half_y)))
     
     return segments
