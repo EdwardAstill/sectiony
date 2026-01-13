@@ -32,7 +32,7 @@ class Section:
     geometry: Optional[Geometry] = None
     dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
-    def plot(self, ax=None, show=True):
+    def plot(self, ax=None, show: bool = True):
         """Plot the section geometry."""
         from .plotter import plot_section
         return plot_section(self, ax=ax, show=show)

@@ -144,7 +144,7 @@ def _clip_hollow_to_solids(
 def plot_section(
     section: 'Section', 
     ax: Optional[plt.Axes] = None, 
-    show: bool = True
+    show: bool = True,
 ) -> Optional[plt.Axes]:
     """
     Plot the cross-section geometry with native curve rendering.
@@ -233,11 +233,6 @@ def plot_section(
         ax.set_ylim(y_min - padding_y, y_max + padding_y)
         ax.set_aspect('equal')
     
-    ax.set_xlabel('x')
-    ax.set_ylabel('y', rotation=0)
-    ax.set_title(f"Section: {section.name}")
-    ax.grid(False)
-
     if show:
         plt.show()
         

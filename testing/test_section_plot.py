@@ -64,9 +64,9 @@ class TestSectionPlot(unittest.TestCase):
         aspect = ax.get_aspect()
         self.assertTrue(aspect == 'equal' or aspect == 1.0)
         
-        # Check labels
-        self.assertEqual(ax.get_xlabel(), 'x')
-        self.assertEqual(ax.get_ylabel(), 'y')
+        # Labels are not set by default (caller controls styling)
+        self.assertEqual(ax.get_xlabel(), '')
+        self.assertEqual(ax.get_ylabel(), '')
         plt.close(fig)
 
 if __name__ == "__main__":

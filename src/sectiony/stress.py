@@ -304,9 +304,6 @@ class Stress:
         ax.set_ylim(min_y - padding/2, max_y + padding/2)
         
         ax.set_aspect('equal')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_title(f'{display_name} stress')
 
         if show:
             plt.show()
