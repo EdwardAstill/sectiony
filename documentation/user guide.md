@@ -187,6 +187,7 @@ print(f"Shear Center: ({my_section.SCx}, {my_section.SCy})")
 | **Ix, Iy** | Second moment of area (bending stiffness) |
 | **Ixy** | Product of inertia (asymmetry measure) |
 | **J** | Torsional constant |
+| **Cw** | Warping constant |
 | **Sx, Sy** | Elastic section modulus |
 | **Zpl_x, Zpl_y** | Plastic section modulus |
 | **rx, ry** | Radius of gyration (for buckling) |

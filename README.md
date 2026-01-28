@@ -112,7 +112,7 @@ print(f"Area: {new_section.A:.2f}")  # Same as original
 **See Examples:**
 - `examples/making_sections.py` - Comprehensive examples of creating sections
 - `examples/gallery/` - Visual gallery of section types
-- `examples/json/` - Sample JSON files for all section types
+- `jsons/` - Sample JSON files for all section types
 
 ## Section Properties
 
@@ -129,6 +129,7 @@ Sectiony automatically calculates a comprehensive set of properties for any geom
 | **Zpl_x**, **Zpl_y** | Plastic Moduli | Used for plastic moment capacity. |
 | **rx**, **ry** | Radii of Gyration | Used for buckling analysis ($\sqrt{I/A}$). |
 | **SCx**, **SCy** | Shear Center | Point where transverse loads induce no torsion. |
+| **Cw** | Warping Constant | Resistance to warping. |
 
 ### Accessing Properties
 

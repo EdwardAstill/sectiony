@@ -22,6 +22,7 @@
 | **Iy** | Moment of Inertia (y) | Second moment of area about the **y-axis** ($\int x^2 dA$). Resistance to bending about the y-axis. |
 | **Ixy** | Product of Inertia | Measure of asymmetry ($\int x y \, dA$). Zero for symmetric sections. Used to find principal axes. |
 | **J** | Torsional Constant | Resistance to twisting. Calculated by solving the Poisson equation on a grid. |
+| **Cw** | Warping Constant | Resistance to warping (non-uniform torsion). Calculated using the warping function. |
 
 ## Strength & Stability Properties
 
@@ -90,3 +91,4 @@ print(f"Plastic Modulus x (Zpl_x): {pentagon.Zpl_x:.4f}")
 3.  **Grid Properties**: For `J` and `Zpl`, the code automatically creates a 2D grid (mask) over the shape's bounding box.
     *   **Plastic Modulus ($Z_{pl}$)**: It finds the plastic neutral axis (PNA) that bisects the area on the grid and sums the first moments of area about that axis.
     *   **Torsion ($J$)**: It solves the Poisson partial differential equation ($\nabla^2 \phi = -2$) on the grid to find the Prandtl stress function $\phi$, and integrates it to find $J$.
+    *   **Warping Constant ($C_w$)**: It solves the Laplace equation to find the warping function $\omega$, computes the normalized sectorial coordinate $\omega_n$, and integrates $\omega_n^2$ over the area.

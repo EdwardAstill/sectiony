@@ -36,29 +36,29 @@ print(f"  Outer corner radius:  0.0126 m")
 print(f"  Inner corner radius:  0.0066 m")
 
 print("\nSection Properties:")
-print(f"  Area (A):             {section.A:.6f} m²")
+print(f"  Area (A):             {section.A:.6f} m^2")
 print(f"  Centroid (Cx, Cy):    ({section.Cx:.6f}, {section.Cy:.6f}) m")
 
 print("\nSecond Moments of Area:")
-print(f"  Ix:                   {section.Ix:.6e} m⁴")
-print(f"  Iy:                   {section.Iy:.6e} m⁴")
-print(f"  Ixy:                  {section.Ixy:.6e} m⁴")
+print(f"  Ix:                   {section.Ix:.6e} m^4")
+print(f"  Iy:                   {section.Iy:.6e} m^4")
+print(f"  Ixy:                  {section.Ixy:.6e} m^4")
 
 print("\nRadii of Gyration:")
 print(f"  rx:                   {section.rx:.6f} m")
 print(f"  ry:                   {section.ry:.6f} m")
 
 print("\nElastic Section Moduli:")
-print(f"  Sx:                   {section.Sx:.6e} m³")
-print(f"  Sy:                   {section.Sy:.6e} m³")
+print(f"  Sx:                   {section.Sx:.6e} m^3")
+print(f"  Sy:                   {section.Sy:.6e} m^3")
 
 print("\nPlastic Section Moduli:")
-print(f"  Zpl_x:                {section.Zpl_x:.6e} m³")
-print(f"  Zpl_y:                {section.Zpl_y:.6e} m³")
+print(f"  Zpl_x:                {section.Zpl_x:.6e} m^3")
+print(f"  Zpl_y:                {section.Zpl_y:.6e} m^3")
 
 print("\nTorsion & Shear:")
-print(f"  Torsion constant (J): {section.J:.6e} m⁴")
-print(f"  Warping constant (Cw):{section.Cw:.6e} m⁶")
+print(f"  Torsion constant (J): {section.J:.6e} m^4")
+print(f"  Warping constant (Cw):{section.Cw:.6e} m^6")
 print(f"  Shear center (SCx):   {section.SCx:.6f} m")
 print(f"  Shear center (SCy):   {section.SCy:.6f} m")
 
@@ -75,7 +75,7 @@ fig, ax = plt.subplots(figsize=(8, 10))
 section.plot(ax=ax, show=False)
 ax.set_title(
     f"{section.name}\n"
-    f"A={section.A:.1f} mm², Ix={section.Ix:.2e} mm⁴, Iy={section.Iy:.2e} mm⁴",
+    f"A={section.A:.1f} mm^2, Ix={section.Ix:.2e} mm^4, Iy={section.Iy:.2e} mm^4",
     fontsize=11
 )
 

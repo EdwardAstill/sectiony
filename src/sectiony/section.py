@@ -32,10 +32,16 @@ class Section:
     geometry: Optional[Geometry] = None
     dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
-    def plot(self, ax=None, show: bool = True):
-        """Plot the section geometry."""
+    def plot(self, ax=None, show: bool = True, rotate: bool = False):
+        """Plot the section geometry.
+        
+        Args:
+            ax: Optional matplotlib axes to plot on. If None, creates a new figure.
+            show: Whether to call plt.show() at the end.
+            rotate: If True, rotate the plot so x becomes vertical and y points left.
+        """
         from .plotter import plot_section
-        return plot_section(self, ax=ax, show=show)
+        return plot_section(self, ax=ax, show=show, rotate=rotate)
 
     def calculate_stress(self, N: float = 0.0, Vx: float = 0.0, Vy: float = 0.0, Mx: float = 0.0, My: float = 0.0, Mz: float = 0.0):
         """

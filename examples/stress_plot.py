@@ -25,14 +25,21 @@ section = rhs(b=100, h=200, t=10, r=15)
 
 # 2. Define Internal Forces (Combined Loading)
 # Units: N, mm
-N = 50e3       # 50 kN Tension
-Vy = 20e3      # 20 kN Shear Y
-Vz = 10e3      # 10 kN Shear Z
-Mx = 5e6       # 5 kNm Torsion
-My = 10e6      # 10 kNm Bending about Y
-Mz = 20e6      # 20 kNm Bending about Z
+# Convention:
+# N: Axial Force
+# Vx, Vy: Shear Forces
+# Mx: Bending Moment about X (Vertical Bending for sectiony convention where y is vertical)
+# My: Bending Moment about Y (Horizontal Bending)
+# Mz: Torsion about Z
 
-stress = section.calculate_stress(N=N, Vy=Vy, Vz=Vz, Mx=Mx, My=My, Mz=Mz)
+N = 50e3       # 50 kN Tension
+Vx = 10e3      # 10 kN Shear X
+Vy = 20e3      # 20 kN Shear Y
+Mx = 10e6      # 10 kNm Bending about X
+My = 5e6       # 5 kNm Bending about Y
+Mz = 5e6       # 5 kNm Torsion
+
+stress = section.calculate_stress(N=N, Vx=Vx, Vy=Vy, Mx=Mx, My=My, Mz=Mz)
 
 # 3. Visualization
 # Create a 2x3 grid of subplots

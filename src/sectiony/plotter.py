@@ -145,6 +145,7 @@ def plot_section(
     section: 'Section', 
     ax: Optional[plt.Axes] = None, 
     show: bool = True,
+    rotate: bool = False,
 ) -> Optional[plt.Axes]:
     """
     Plot the cross-section geometry with native curve rendering.
@@ -156,6 +157,8 @@ def plot_section(
         section: The section to plot
         ax: Optional matplotlib axes to plot on. If None, creates a new figure.
         show: Whether to call plt.show() at the end.
+        rotate: If True, rotate the plot so x becomes vertical and y points left.
+                The scale remains on the right side.
     
     Returns:
         The axes object used for plotting.
@@ -173,6 +176,22 @@ def plot_section(
     all_x: List[float] = []
     all_y: List[float] = []
     
+    # Helper function to transform coordinates if rotating
+    def transform_point(x: float, y: float) -> Tuple[float, float]:
+        """Transform point: (x, y) -> (-y, x) for 90° counter-clockwise rotation."""
+        if rotate:
+            return (-y, x)
+        return (x, y)
+    
+    # Helper function to transform path vertices
+    def transform_path(path: Path) -> Path:
+        """Transform all vertices in a path."""
+        if not rotate:
+            return path
+        # Transform vertices: (x, y) -> (-y, x)
+        transformed_vertices = [(-v[1], v[0]) for v in path.vertices]
+        return Path(transformed_vertices, path.codes)
+    
     # Plot solids
     for contour in solids:
         path = contour_to_path(contour)
@@ -182,9 +201,12 @@ def plot_section(
         # Collect bounds from discretized points
         points = contour.discretize()
         for p in points:
-            all_x.append(p[0])
-            all_y.append(p[1])
+            tx, ty = transform_point(p[0], p[1])
+            all_x.append(tx)
+            all_y.append(ty)
         
+        # Transform path if rotating
+        path = transform_path(path)
         patch = PathPatch(path, facecolor='silver', edgecolor='black', 
                          alpha=0.8, linewidth=1.0)
         ax.add_patch(patch)
@@ -201,11 +223,14 @@ def plot_section(
         for clipped_points in clipped_regions:
             # Collect bounds from clipped points
             for p in clipped_points:
-                all_x.append(p[0])
-                all_y.append(p[1])
+                tx, ty = transform_point(p[0], p[1])
+                all_x.append(tx)
+                all_y.append(ty)
             
+            # Transform points for path creation
+            transformed_points = [transform_point(p[0], p[1]) for p in clipped_points]
             # Create path from clipped polygon
-            path = points_to_path(clipped_points)
+            path = points_to_path(transformed_points)
             if path is None:
                 continue
             
@@ -229,8 +254,16 @@ def plot_section(
         padding_x = dx * 0.1
         padding_y = dy * 0.1
         
-        ax.set_xlim(x_min - padding_x, x_max + padding_x)
-        ax.set_ylim(y_min - padding_y, y_max + padding_y)
+        if rotate:
+            # Invert x-axis so positive y values point left
+            ax.set_xlim(x_max + padding_x, x_min - padding_x)
+            ax.set_ylim(y_min - padding_y, y_max + padding_y)
+            ax.set_xlabel('y (pointing left)')
+            ax.set_ylabel('x (vertical)')
+        else:
+            ax.set_xlim(x_min - padding_x, x_max + padding_x)
+            ax.set_ylim(y_min - padding_y, y_max + padding_y)
+        
         ax.set_aspect('equal')
     
     if show:
