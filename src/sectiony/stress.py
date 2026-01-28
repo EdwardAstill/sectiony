@@ -269,6 +269,9 @@ class Stress:
         show: bool = True,
         cmap: str = "viridis",
         rotate: bool = False,
+        xlabel: Optional[str] = None,
+        ylabel: Optional[str] = None,
+        colorbar_label: Optional[str] = None,
     ) -> Optional[plt.Axes]:
         """
         Generate a contour plot of stress distribution.
@@ -280,6 +283,9 @@ class Stress:
             cmap: Colormap name.
             rotate: If True, rotate the plot so x becomes vertical and y points left.
                     The scale remains on the right side.
+            xlabel: Optional label for x-axis. If None, uses default based on rotation.
+            ylabel: Optional label for y-axis. If None, uses default based on rotation.
+            colorbar_label: Optional label for colorbar. If None, uses default display name.
             
         Returns:
             The axes object, or None if no geometry.
@@ -339,16 +345,33 @@ class Stress:
             plot_max_y = max_x
             ax.set_xlim(plot_max_x + padding/2, plot_min_x - padding/2)  # Inverted
             ax.set_ylim(plot_min_y - padding/2, plot_max_y + padding/2)
-            ax.set_xlabel('y')
-            ax.set_ylabel('x')
+            # Automatically swap labels for rotated plots
+            # If labels provided, swap them; otherwise use defaults
+            if xlabel is None and ylabel is None:
+                # No labels provided - use defaults for rotated view
+                ax.set_xlabel('y')
+                ax.set_ylabel('x')
+            else:
+                # Labels provided - swap them for rotated view
+                # xlabel becomes y-axis label, ylabel becomes x-axis label
+                ax.set_xlabel(ylabel if ylabel is not None else 'y')
+                ax.set_ylabel(xlabel if xlabel is not None else 'x')
         else:
             ax.set_xlim(min_x - padding/2, max_x + padding/2)
             ax.set_ylim(min_y - padding/2, max_y + padding/2)
+            # Set labels if provided
+            if xlabel is not None:
+                ax.set_xlabel(xlabel)
+            if ylabel is not None:
+                ax.set_ylabel(ylabel)
         
         ax.set_aspect('equal')
         
         # Create colorbar AFTER setting limits and aspect so it's properly sized
         display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
+        # Use colorbar_label if provided, otherwise use default display name
+        cb_label = colorbar_label if colorbar_label is not None else display_name
+        
         if rotate:
             # Use make_axes_locatable for precise colorbar sizing that matches plot height
             divider = make_axes_locatable(ax)
@@ -358,11 +381,11 @@ class Stress:
             colorbar = plt.colorbar(
                 contour_plot, 
                 cax=cax, 
-                label=display_name, 
+                label=cb_label, 
                 format='%.4g'
             )
         else:
-            colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
+            colorbar = plt.colorbar(contour_plot, ax=ax, label=cb_label, format='%.4g')
 
         if show:
             plt.show()
