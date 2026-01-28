@@ -325,13 +325,11 @@ class Stress:
 
         # Plot contours
         contour_plot = ax.contourf(X_plot, Y_plot, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
-        display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
-        colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
 
         # Draw outlines on top to hide jagged edges
         self._draw_outlines(ax, rotate=rotate)
         
-        # Set appropriate limits
+        # Set appropriate limits and aspect BEFORE creating colorbar
         if rotate:
             # Transform bounds: (x, y) -> (-y, x)
             plot_min_x = -max_y
@@ -347,6 +345,48 @@ class Stress:
             ax.set_ylim(min_y - padding/2, max_y + padding/2)
         
         ax.set_aspect('equal')
+        
+        # Create colorbar AFTER setting limits and aspect so it's properly sized
+        display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
+        if rotate:
+            # For rotated plots, calculate shrink to match colorbar height to plot height
+            # Get the data ranges to determine aspect ratio
+            y_range = plot_max_y - plot_min_y + padding  # Vertical extent in data coordinates
+            x_range = plot_max_x - plot_min_x + padding  # Horizontal extent in data coordinates
+            
+            # Get axes position in figure coordinates
+            ax_pos = ax.get_position()
+            ax_width_fig = ax_pos.width
+            ax_height_fig = ax_pos.height
+            
+            # With aspect='equal', matplotlib makes the plot square in data coordinates
+            # The plot will be constrained by the smaller dimension
+            # Calculate which dimension constrains the plot
+            data_aspect = y_range / x_range if x_range > 0 else 1.0
+            fig_aspect = ax_height_fig / ax_width_fig if ax_width_fig > 0 else 1.0
+            
+            # Determine which dimension is constraining
+            if data_aspect > fig_aspect:
+                # Height is constraining - plot uses full height
+                shrink_value = 1.0
+            else:
+                # Width is constraining - plot height is less than axes height
+                # Calculate the actual plot height in figure coordinates
+                actual_plot_height = ax_width_fig * data_aspect
+                shrink_value = actual_plot_height / ax_height_fig if ax_height_fig > 0 else 0.9
+                # Clamp to reasonable range
+                shrink_value = max(0.7, min(shrink_value, 1.0))
+            
+            colorbar = plt.colorbar(
+                contour_plot, 
+                ax=ax, 
+                label=display_name, 
+                format='%.4g', 
+                shrink=shrink_value,  # Shrink colorbar to match plot height
+                pad=0.02
+            )
+        else:
+            colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
 
         if show:
             plt.show()
