@@ -205,22 +205,36 @@ class Stress:
         
         return (is_in_solid & ~is_in_hollow).reshape(X.shape)
 
-    def _draw_outlines(self, ax: plt.Axes) -> None:
+    def _draw_outlines(self, ax: plt.Axes, rotate: bool = False) -> None:
         """
         Draw contour outlines on the plot using high-quality paths.
         Uses shared path conversion from plotter module.
         Hollows are clipped to only show the parts that intersect with solids.
+        
+        Args:
+            ax: Matplotlib axes to draw on.
+            rotate: If True, transform paths for rotated view.
         """
         from .plotter import contour_to_path, points_to_path, _clip_hollow_to_solids
+        from matplotlib.path import Path
         
         solids = [c for c in self.section.geometry.contours if not c.hollow]
         hollows = [c for c in self.section.geometry.contours if c.hollow]
+        
+        # Helper function to transform path if rotating
+        def transform_path(path: Path) -> Path:
+            """Transform all vertices in a path: (x, y) -> (-y, x)"""
+            if not rotate:
+                return path
+            transformed_vertices = [(-v[1], v[0]) for v in path.vertices]
+            return Path(transformed_vertices, path.codes)
         
         # Draw solids
         for contour in solids:
             path = contour_to_path(contour)
             if path is None:
                 continue
+            path = transform_path(path)
             patch = PathPatch(path, facecolor='none', edgecolor='black', 
                               linewidth=1.5)
             ax.add_patch(patch)
@@ -235,7 +249,12 @@ class Stress:
             clipped_regions = _clip_hollow_to_solids(hollow_points, solids)
             
             for clipped_points in clipped_regions:
-                path = points_to_path(clipped_points)
+                # Transform points if rotating
+                if rotate:
+                    transformed_points = [(-p[1], p[0]) for p in clipped_points]
+                else:
+                    transformed_points = clipped_points
+                path = points_to_path(transformed_points)
                 if path is None:
                     continue
                 patch = PathPatch(path, facecolor='none', edgecolor='black',
@@ -248,6 +267,7 @@ class Stress:
         ax: Optional[plt.Axes] = None,
         show: bool = True,
         cmap: str = "viridis",
+        rotate: bool = False,
     ) -> Optional[plt.Axes]:
         """
         Generate a contour plot of stress distribution.
@@ -257,6 +277,8 @@ class Stress:
             ax: Matplotlib axes (creates new if None).
             show: Whether to display the plot.
             cmap: Colormap name.
+            rotate: If True, rotate the plot so x becomes vertical and y points left.
+                    The scale remains on the right side.
             
         Returns:
             The axes object, or None if no geometry.
@@ -284,24 +306,45 @@ class Stress:
         y_grid = np.linspace(min_y - padding, max_y + padding, _PLOT_RESOLUTION)
         X, Y = np.meshgrid(x_grid, y_grid)
 
-        # Compute stress values
+        # Transform coordinates if rotating: (x, y) -> (-y, x)
+        if rotate:
+            X_plot = -Y
+            Y_plot = X
+            # For stress calculation, we need original coordinates
+            # So we compute stress at (X, Y) but plot at (X_plot, Y_plot)
+        else:
+            X_plot = X
+            Y_plot = Y
+
+        # Compute stress values (using original coordinates)
         S = np.vectorize(func)(X, Y)
 
-        # Mask points outside geometry
+        # Mask points outside geometry (using original coordinates)
         mask = self._create_mask(X, Y)
         S_masked = np.where(mask, S, np.nan)
 
         # Plot contours
-        contour_plot = ax.contourf(X, Y, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
+        contour_plot = ax.contourf(X_plot, Y_plot, S_masked, cmap=cmap, levels=_CONTOUR_LEVELS)
         display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
         colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
 
         # Draw outlines on top to hide jagged edges
-        self._draw_outlines(ax)
+        self._draw_outlines(ax, rotate=rotate)
         
         # Set appropriate limits
-        ax.set_xlim(min_x - padding/2, max_x + padding/2)
-        ax.set_ylim(min_y - padding/2, max_y + padding/2)
+        if rotate:
+            # Transform bounds: (x, y) -> (-y, x)
+            plot_min_x = -max_y
+            plot_max_x = -min_y
+            plot_min_y = min_x
+            plot_max_y = max_x
+            ax.set_xlim(plot_max_x + padding/2, plot_min_x - padding/2)  # Inverted
+            ax.set_ylim(plot_min_y - padding/2, plot_max_y + padding/2)
+            ax.set_xlabel('y (pointing left)')
+            ax.set_ylabel('x (vertical)')
+        else:
+            ax.set_xlim(min_x - padding/2, max_x + padding/2)
+            ax.set_ylim(min_y - padding/2, max_y + padding/2)
         
         ax.set_aspect('equal')
 
