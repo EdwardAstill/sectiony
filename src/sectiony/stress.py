@@ -339,8 +339,8 @@ class Stress:
             plot_max_y = max_x
             ax.set_xlim(plot_max_x + padding/2, plot_min_x - padding/2)  # Inverted
             ax.set_ylim(plot_min_y - padding/2, plot_max_y + padding/2)
-            ax.set_xlabel('y (pointing left)')
-            ax.set_ylabel('x (vertical)')
+            ax.set_xlabel('y')
+            ax.set_ylabel('x')
         else:
             ax.set_xlim(min_x - padding/2, max_x + padding/2)
             ax.set_ylim(min_y - padding/2, max_y + padding/2)
