@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Literal, Callable, List, Tuple
 
@@ -349,41 +350,16 @@ class Stress:
         # Create colorbar AFTER setting limits and aspect so it's properly sized
         display_name = _STRESS_DISPLAY_NAMES[stress_type] if stress_type in _STRESS_DISPLAY_NAMES else stress_type
         if rotate:
-            # For rotated plots, calculate shrink to match colorbar height to plot height
-            # Get the data ranges to determine aspect ratio
-            y_range = plot_max_y - plot_min_y + padding  # Vertical extent in data coordinates
-            x_range = plot_max_x - plot_min_x + padding  # Horizontal extent in data coordinates
-            
-            # Get axes position in figure coordinates
-            ax_pos = ax.get_position()
-            ax_width_fig = ax_pos.width
-            ax_height_fig = ax_pos.height
-            
-            # With aspect='equal', matplotlib makes the plot square in data coordinates
-            # The plot will be constrained by the smaller dimension
-            # Calculate which dimension constrains the plot
-            data_aspect = y_range / x_range if x_range > 0 else 1.0
-            fig_aspect = ax_height_fig / ax_width_fig if ax_width_fig > 0 else 1.0
-            
-            # Determine which dimension is constraining
-            if data_aspect > fig_aspect:
-                # Height is constraining - plot uses full height
-                shrink_value = 1.0
-            else:
-                # Width is constraining - plot height is less than axes height
-                # Calculate the actual plot height in figure coordinates
-                actual_plot_height = ax_width_fig * data_aspect
-                shrink_value = actual_plot_height / ax_height_fig if ax_height_fig > 0 else 0.9
-                # Clamp to reasonable range
-                shrink_value = max(0.7, min(shrink_value, 1.0))
-            
+            # Use make_axes_locatable for precise colorbar sizing that matches plot height
+            divider = make_axes_locatable(ax)
+            # Create colorbar axes on the right side
+            # "size" controls width (5% of plot width), "pad" controls spacing
+            cax = divider.append_axes("right", size="5%", pad=0.1)
             colorbar = plt.colorbar(
                 contour_plot, 
-                ax=ax, 
+                cax=cax, 
                 label=display_name, 
-                format='%.4g', 
-                shrink=shrink_value,  # Shrink colorbar to match plot height
-                pad=0.02
+                format='%.4g'
             )
         else:
             colorbar = plt.colorbar(contour_plot, ax=ax, label=display_name, format='%.4g')
