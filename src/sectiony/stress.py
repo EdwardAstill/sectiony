@@ -18,7 +18,11 @@ StressFunc = Callable[[float, float], float]
 Point = Tuple[float, float]
 
 # Supported stress types
-StressType = Literal["sigma", "sigma_axial", "sigma_bending", "tau", "tau_shear", "tau_torsion", "von_mises"]
+StressType = Literal[
+    "sigma", "sigma_axial", "sigma_bending",
+    "tau", "tau_shear", "tau_torsion",
+    "von_mises", "sigma_1", "sigma_2",
+]
 
 # Plot configuration
 _PLOT_RESOLUTION = 200  # Increased resolution
@@ -34,6 +38,8 @@ _STRESS_DISPLAY_NAMES: dict[str, str] = {
     "tau_shear": "τ (shear)",
     "tau_torsion": "τ (torsion)",
     "von_mises": "Von Mises",
+    "sigma_1": "σ₁ (major principal)",
+    "sigma_2": "σ₂ (minor principal)",
 }
 
 
@@ -124,6 +130,18 @@ class Stress:
         t = self.tau(x, y)
         return np.sqrt(s**2 + 3 * t**2)
 
+    def sigma_1(self, x: float, y: float) -> float:
+        """Maximum principal stress: σ/2 + √((σ/2)² + τ²)."""
+        s = self.sigma(x, y)
+        t = self.tau(x, y)
+        return s / 2 + np.sqrt((s / 2) ** 2 + t ** 2)
+
+    def sigma_2(self, x: float, y: float) -> float:
+        """Minimum principal stress: σ/2 - √((σ/2)² + τ²)."""
+        s = self.sigma(x, y)
+        t = self.tau(x, y)
+        return s / 2 - np.sqrt((s / 2) ** 2 + t ** 2)
+
     def get_stress_func(self, stress_type: StressType) -> StressFunc:
         """Get the stress calculation function for a given type."""
         funcs: dict[str, StressFunc] = {
@@ -134,6 +152,8 @@ class Stress:
             "tau_shear": self.tau_shear,
             "tau_torsion": self.tau_torsion,
             "von_mises": self.von_mises,
+            "sigma_1": self.sigma_1,
+            "sigma_2": self.sigma_2,
         }
         if stress_type not in funcs:
             valid = ", ".join(funcs.keys())

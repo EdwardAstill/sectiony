@@ -218,5 +218,35 @@ class TestStressHollowSection(unittest.TestCase):
         self.assertIsNotNone(ax)
 
 
+class TestPrincipalStress(unittest.TestCase):
+    def setUp(self):
+        from sectiony.library import solid_rect
+        sec = solid_rect(50.0, 100.0)
+        self.stress = sec.calculate_stress(N=1000.0, Mx=5e6)
+
+    def test_sigma1_ge_sigma2(self):
+        x, y = 0.0, 50.0
+        self.assertGreaterEqual(self.stress.sigma_1(x, y), self.stress.sigma_2(x, y))
+
+    def test_principal_stress_von_mises_relation(self):
+        """Von Mises = sqrt(s1^2 - s1*s2 + s2^2) from principal stresses."""
+        import math
+        x, y = 10.0, 40.0
+        s1 = self.stress.sigma_1(x, y)
+        s2 = self.stress.sigma_2(x, y)
+        vm_from_principal = math.sqrt(s1**2 - s1 * s2 + s2**2)
+        vm_direct = self.stress.von_mises(x, y)
+        self.assertAlmostEqual(vm_from_principal, vm_direct, delta=vm_direct * 0.01)
+
+    def test_principal_stress_plot(self):
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax = self.stress.plot(stress_type="sigma_1", ax=ax, show=False)
+        self.assertIsNotNone(ax)
+        plt.close(fig)
+
+
 if __name__ == '__main__':
     unittest.main()
