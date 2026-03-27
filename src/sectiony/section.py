@@ -102,6 +102,17 @@ class Section:
         self.SCx = props.SCx
         self.SCy = props.SCy
 
+    def rotate(self, angle: float) -> 'Section':
+        """
+        Return a new Section with geometry rotated CCW by angle (radians).
+        Properties are recalculated from the rotated geometry.
+        """
+        if self.geometry is None:
+            raise ValueError("Cannot rotate a Section without geometry.")
+        new_geom = self.geometry.rotate(angle)
+        deg = math.degrees(angle)
+        return Section(name=f"{self.name} (rot {deg:.1f}°)", geometry=new_geom)
+
     @property
     def shape_factor_x(self) -> Optional[float]:
         """Plastic/elastic modulus ratio about x-axis (shape factor)."""

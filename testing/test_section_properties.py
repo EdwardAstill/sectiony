@@ -182,5 +182,30 @@ class TestDerivedProperties(unittest.TestCase):
         self.assertIn("RHS", s)
 
 
+class TestRotation(unittest.TestCase):
+    def test_rotate_preserves_area(self):
+        from sectiony.library import rhs
+        import math
+        sec = rhs(100.0, 200.0, 10.0, 0.0)
+        rotated = sec.rotate(math.pi / 4)
+        self.assertAlmostEqual(rotated.A, sec.A, places=3)
+
+    def test_rotate_90_swaps_ix_iy(self):
+        from sectiony.library import rhs
+        import math
+        sec = rhs(100.0, 200.0, 10.0, 0.0)
+        rotated = sec.rotate(math.pi / 2)
+        self.assertAlmostEqual(rotated.Ix, sec.Iy, delta=sec.Iy * 0.01)
+        self.assertAlmostEqual(rotated.Iy, sec.Ix, delta=sec.Ix * 0.01)
+
+    def test_rotate_360_identity(self):
+        from sectiony.library import solid_rect
+        import math
+        sec = solid_rect(30.0, 50.0)
+        rotated = sec.rotate(2 * math.pi)
+        self.assertAlmostEqual(rotated.Ix, sec.Ix, delta=sec.Ix * 0.001)
+        self.assertAlmostEqual(rotated.Iy, sec.Iy, delta=sec.Iy * 0.001)
+
+
 if __name__ == '__main__':
     unittest.main()

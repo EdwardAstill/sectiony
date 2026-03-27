@@ -562,6 +562,40 @@ class Geometry:
         from .dxf_utils import write_dxf
         write_dxf(file_path, self.contours)
 
+    def rotate(self, angle: float) -> 'Geometry':
+        """
+        Return a new Geometry with all segments rotated CCW by angle (radians).
+        """
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+
+        def rot(x: float, y: float):
+            return (x * cos_a - y * sin_a, x * sin_a + y * cos_a)
+
+        new_contours = []
+        for contour in self.contours:
+            new_segments = []
+            for seg in contour.segments:
+                if isinstance(seg, Line):
+                    new_segments.append(Line(start=rot(*seg.start), end=rot(*seg.end)))
+                elif isinstance(seg, Arc):
+                    new_cx, new_cy = rot(*seg.center)
+                    new_segments.append(Arc(
+                        center=(new_cx, new_cy),
+                        radius=seg.radius,
+                        start_angle=seg.start_angle + angle,
+                        end_angle=seg.end_angle + angle,
+                    ))
+                elif isinstance(seg, CubicBezier):
+                    new_segments.append(CubicBezier(
+                        p0=rot(*seg.p0), p1=rot(*seg.p1),
+                        p2=rot(*seg.p2), p3=rot(*seg.p3),
+                    ))
+                else:
+                    new_segments.append(seg)
+            new_contours.append(Contour(segments=new_segments, hollow=contour.hollow))
+        return Geometry(contours=new_contours)
+
 
 # -----------------------------------------------------------------------------
 # Geometry Utils (Clipping)
