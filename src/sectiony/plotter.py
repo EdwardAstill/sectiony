@@ -142,10 +142,12 @@ def _clip_hollow_to_solids(
 
 
 def plot_section(
-    section: 'Section', 
-    ax: Optional[plt.Axes] = None, 
+    section: 'Section',
+    ax: Optional[plt.Axes] = None,
     show: bool = True,
     rotate: bool = False,
+    show_centroid: bool = False,
+    show_shear_center: bool = False,
 ) -> Optional[plt.Axes]:
     """
     Plot the cross-section geometry with native curve rendering.
@@ -266,7 +268,16 @@ def plot_section(
         
         ax.set_aspect('equal')
     
+    # --- Optional markers ---
+    if show_centroid and section.Cx is not None and section.Cy is not None:
+        cx, cy = transform_point(section.Cx, section.Cy)
+        ax.scatter([cx], [cy], marker='+', s=100, color='red', zorder=5, label='Centroid')
+
+    if show_shear_center and section.SCx is not None and section.SCy is not None:
+        scx, scy = transform_point(section.SCx, section.SCy)
+        ax.scatter([scx], [scy], marker='x', s=100, color='blue', zorder=5, label='Shear Centre')
+
     if show:
         plt.show()
-        
+
     return ax

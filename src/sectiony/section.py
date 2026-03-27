@@ -33,16 +33,21 @@ class Section:
     geometry: Optional[Geometry] = None
     dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
-    def plot(self, ax=None, show: bool = True, rotate: bool = False):
+    def plot(self, ax=None, show: bool = True, rotate: bool = False,
+             show_centroid: bool = False, show_shear_center: bool = False):
         """Plot the section geometry.
-        
+
         Args:
             ax: Optional matplotlib axes to plot on. If None, creates a new figure.
             show: Whether to call plt.show() at the end.
             rotate: If True, rotate the plot so x becomes vertical and y points left.
+            show_centroid: If True, plot a marker at the centroid.
+            show_shear_center: If True, plot a marker at the shear centre.
         """
         from .plotter import plot_section
-        return plot_section(self, ax=ax, show=show, rotate=rotate)
+        return plot_section(self, ax=ax, show=show, rotate=rotate,
+                            show_centroid=show_centroid,
+                            show_shear_center=show_shear_center)
 
     def calculate_stress(self, N: float = 0.0, Vx: float = 0.0, Vy: float = 0.0, Mx: float = 0.0, My: float = 0.0, Mz: float = 0.0):
         """
@@ -115,52 +120,14 @@ class Section:
 
     def __add__(self, other: 'Section') -> 'Section':
         """
-        Combine two sections into one by merging their geometries and properties.
-        Useful for built-up sections. Properties are calculated as the sum of the components.
+        Combine two sections into one by merging their geometries.
+        Useful for built-up sections. Properties are recalculated.
         """
         if self.geometry is None or other.geometry is None:
             raise ValueError("Both sections must have geometry to combine.")
-
-        # Combine contours
         combined_contours = self.geometry.contours + other.geometry.contours
         new_geom = Geometry(contours=combined_contours)
-
-        # For built-up sections, calculate properties as the sum of components
-        # This treats overlapping sections additively rather than using boolean union
-        combined_A = self.A + other.A
-
-        # For composite sections, centroid is weighted average
-        if combined_A > 0:
-            combined_Cx = (self.A * self.Cx + other.A * other.Cx) / combined_A if self.Cx is not None and other.Cx is not None else None
-            combined_Cy = (self.A * self.Cy + other.A * other.Cy) / combined_A if self.Cy is not None and other.Cy is not None else None
-        else:
-            combined_Cx = None
-            combined_Cy = None
-
-        # For moments of inertia, use parallel axis theorem
-        # I_total = I_self + A_self * d_self^2 + I_other + A_other * d_other^2
-        def combine_inertia(I_self, A_self, c_self, I_other, A_other, c_other, combined_c):
-            if I_self is None or I_other is None or combined_c is None or c_self is None or c_other is None:
-                return None
-            d_self = c_self - combined_c
-            d_other = c_other - combined_c
-            return I_self + A_self * d_self**2 + I_other + A_other * d_other**2
-
-        combined_Ix = combine_inertia(self.Ix, self.A, self.Cy, other.Ix, other.A, other.Cy, combined_Cy)
-        combined_Iy = combine_inertia(self.Iy, self.A, self.Cx, other.Iy, other.A, other.Cx, combined_Cx)
-        combined_Ixy = combine_inertia(self.Ixy, self.A, self.Cy, other.Ixy, other.A, other.Cy, combined_Cy) if self.Ixy is not None and other.Ixy is not None else None
-
-        # Create new section with combined properties
-        return Section(
-            name=f"{self.name} + {other.name}",
-            geometry=new_geom,
-            A=combined_A,
-            Cx=combined_Cx,
-            Cy=combined_Cy,
-            Ix=combined_Ix,
-            Iy=combined_Iy,
-            Ixy=combined_Ixy,
-        )
+        return Section(name=f"{self.name} + {other.name}", geometry=new_geom)
 
     @property
     def shape_factor_x(self) -> Optional[float]:

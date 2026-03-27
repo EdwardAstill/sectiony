@@ -69,5 +69,34 @@ class TestSectionPlot(unittest.TestCase):
         self.assertEqual(ax.get_ylabel(), '')
         plt.close(fig)
 
+class TestPlotMarkers(unittest.TestCase):
+    def test_centroid_marker_plotted(self):
+        """Centroid marker adds a scatter artist."""
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from sectiony.library import rhs
+
+        sec = rhs(100.0, 200.0, 10.0, 0.0)
+        fig, ax = plt.subplots()
+        sec.plot(ax=ax, show=False, show_centroid=True)
+        collections = ax.collections
+        self.assertGreater(len(collections), 0)
+        plt.close(fig)
+
+    def test_no_markers_by_default(self):
+        """Default plot has no scatter collections."""
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from sectiony.library import rhs
+
+        sec = rhs(100.0, 200.0, 10.0, 0.0)
+        fig, ax = plt.subplots()
+        sec.plot(ax=ax, show=False)
+        self.assertEqual(len(ax.collections), 0)
+        plt.close(fig)
+
+
 if __name__ == "__main__":
     unittest.main()
