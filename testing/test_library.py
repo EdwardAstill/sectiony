@@ -12,7 +12,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 try:
-    from sectiony.library import chs, rhs, i, u
+    from sectiony.library import chs, rhs, i, u, solid_rect, solid_circle, shs
 except ImportError:
     pass
 
@@ -153,6 +153,34 @@ class TestLibrary(unittest.TestCase):
         print(f"  - A: {sec.A:.4f} vs {expected_A:.4f}")
         
         self.assertAlmostEqual(sec.A, expected_A, places=5)
+
+class TestLibraryPrimitives(unittest.TestCase):
+    def test_solid_rect(self):
+        b, h = 10.0, 20.0
+        sec = solid_rect(b, h)
+        self.assertAlmostEqual(sec.A, b * h, places=5)
+        self.assertAlmostEqual(sec.Ix, b * h**3 / 12, places=5)
+        self.assertAlmostEqual(sec.Iy, h * b**3 / 12, places=5)
+        self.assertAlmostEqual(sec.Cx, 0.0, places=5)
+        self.assertAlmostEqual(sec.Cy, 0.0, places=5)
+
+    def test_solid_circle(self):
+        d = 20.0
+        R = d / 2
+        sec = solid_circle(d)
+        expected_A = math.pi * R**2
+        expected_I = math.pi * R**4 / 4
+        self.assertAlmostEqual(sec.A, expected_A, delta=expected_A * 0.02)
+        self.assertAlmostEqual(sec.Ix, expected_I, delta=expected_I * 0.02)
+        self.assertAlmostEqual(sec.Iy, expected_I, delta=expected_I * 0.02)
+
+    def test_shs(self):
+        d, t = 50.0, 4.0
+        sec = shs(d, t)
+        expected_A = d**2 - (d - 2*t)**2
+        self.assertAlmostEqual(sec.A, expected_A, places=5)
+        self.assertAlmostEqual(sec.Ix, sec.Iy, places=5)  # Symmetric
+
 
 if __name__ == '__main__':
     unittest.main()
