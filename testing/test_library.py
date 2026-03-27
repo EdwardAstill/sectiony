@@ -12,7 +12,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 try:
-    from sectiony.library import chs, rhs, i, u, solid_rect, solid_circle, shs, angle
+    from sectiony.library import chs, rhs, i, u, solid_rect, solid_circle, shs, angle, t_section
 except ImportError:
     pass
 
@@ -204,6 +204,27 @@ class TestAngle(unittest.TestCase):
         b, h, t = 80.0, 80.0, 8.0
         sec = angle(b, h, t, r=0.0)
         self.assertNotAlmostEqual(sec.Ixy, 0.0, places=0)
+
+
+class TestTSection(unittest.TestCase):
+    def test_t_section_area(self):
+        b, d, tf, tw = 100.0, 150.0, 10.0, 6.0
+        sec = t_section(b, d, tf, tw, r=0.0)
+        expected_A = b * tf + (d - tf) * tw
+        self.assertAlmostEqual(sec.A, expected_A, places=4)
+
+    def test_t_section_symmetric_iy(self):
+        """T-section is symmetric about y-axis, so Ixy = 0 and Cx = 0."""
+        b, d, tf, tw = 100.0, 150.0, 10.0, 6.0
+        sec = t_section(b, d, tf, tw, r=0.0)
+        self.assertAlmostEqual(sec.Cx, 0.0, places=5)
+        self.assertAlmostEqual(sec.Ixy, 0.0, places=3)
+
+    def test_t_section_centroid_y(self):
+        """Centroid is NOT at origin (asymmetric about x-axis)."""
+        b, d, tf, tw = 100.0, 150.0, 10.0, 6.0
+        sec = t_section(b, d, tf, tw, r=0.0)
+        self.assertNotAlmostEqual(sec.Cy, 0.0, places=1)
 
 
 if __name__ == '__main__':
