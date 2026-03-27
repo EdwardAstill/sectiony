@@ -248,5 +248,20 @@ class TestPrincipalStress(unittest.TestCase):
         plt.close(fig)
 
 
+class TestNeutralAxis(unittest.TestCase):
+    def test_neutral_axis_adds_line(self):
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from sectiony.library import solid_rect
+
+        sec = solid_rect(50.0, 100.0)
+        stress = sec.calculate_stress(Mx=5e6)
+        fig, ax = plt.subplots()
+        stress.plot(ax=ax, show=False, show_neutral_axis=True)
+        self.assertGreaterEqual(len(ax.lines), 1)
+        plt.close(fig)
+
+
 if __name__ == '__main__':
     unittest.main()

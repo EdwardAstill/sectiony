@@ -292,6 +292,7 @@ class Stress:
         xlabel: Optional[str] = None,
         ylabel: Optional[str] = None,
         colorbar_label: Optional[str] = None,
+        show_neutral_axis: bool = False,
     ) -> Optional[plt.Axes]:
         """
         Generate a contour plot of stress distribution.
@@ -355,7 +356,33 @@ class Stress:
 
         # Draw outlines on top to hide jagged edges
         self._draw_outlines(ax, rotate=rotate)
-        
+
+        if show_neutral_axis:
+            import math as _math
+            min_x, max_x, min_y, max_y = self._compute_bounds()
+            Ix = self.section.Ix or 0.0
+            Iy = self.section.Iy or 0.0
+            Cx = self.section.Cx or 0.0
+            Cy = self.section.Cy or 0.0
+
+            mx_term = self.Mx / Ix if (self.Mx and Ix) else 0.0
+            my_term = self.My / Iy if (self.My and Iy) else 0.0
+
+            if abs(mx_term) + abs(my_term) > 1e-30:
+                # NA direction: perpendicular to stress gradient (my_term, mx_term)
+                na_angle = _math.atan2(my_term, -mx_term)
+                span = max(max_x - min_x, max_y - min_y) * 0.7
+                dx = _math.cos(na_angle) * span
+                dy = _math.sin(na_angle) * span
+                if rotate:
+                    ax.plot([-(Cy + dy), -(Cy - dy)], [Cx + dx, Cx - dx],
+                            color='white', linestyle='--', linewidth=1.5,
+                            label='Neutral axis')
+                else:
+                    ax.plot([Cx + dx, Cx - dx], [Cy + dy, Cy - dy],
+                            color='white', linestyle='--', linewidth=1.5,
+                            label='Neutral axis')
+
         # Set appropriate limits and aspect BEFORE creating colorbar
         if rotate:
             # Transform bounds: (x, y) -> (-y, x)
