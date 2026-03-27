@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from dataclasses import dataclass, field
 from typing import Optional, List, Tuple, Dict
 from .geometry import Geometry
@@ -100,3 +101,72 @@ class Section:
         self.Cw = props.Cw
         self.SCx = props.SCx
         self.SCy = props.SCy
+
+    @property
+    def shape_factor_x(self) -> Optional[float]:
+        """Plastic/elastic modulus ratio about x-axis (shape factor)."""
+        if self.Zpl_x is None or self.Sx is None or self.Sx == 0:
+            return None
+        return self.Zpl_x / self.Sx
+
+    @property
+    def shape_factor_y(self) -> Optional[float]:
+        """Plastic/elastic modulus ratio about y-axis (shape factor)."""
+        if self.Zpl_y is None or self.Sy is None or self.Sy == 0:
+            return None
+        return self.Zpl_y / self.Sy
+
+    @property
+    def I1(self) -> Optional[float]:
+        """Maximum (major) principal second moment of area."""
+        if None in (self.Ix, self.Iy, self.Ixy):
+            return None
+        avg = (self.Ix + self.Iy) / 2
+        diff = (self.Ix - self.Iy) / 2
+        return avg + math.sqrt(diff**2 + self.Ixy**2)
+
+    @property
+    def I2(self) -> Optional[float]:
+        """Minimum (minor) principal second moment of area."""
+        if None in (self.Ix, self.Iy, self.Ixy):
+            return None
+        avg = (self.Ix + self.Iy) / 2
+        diff = (self.Ix - self.Iy) / 2
+        return avg - math.sqrt(diff**2 + self.Ixy**2)
+
+    @property
+    def principal_angle(self) -> Optional[float]:
+        """Angle (radians) from x-axis to major principal axis (I1)."""
+        if None in (self.Ix, self.Iy, self.Ixy):
+            return None
+        return 0.5 * math.atan2(-2 * self.Ixy, self.Ix - self.Iy)
+
+    def __str__(self) -> str:
+        rows = [
+            ("A",              self.A,              "Area"),
+            ("Cx",             self.Cx,             "Centroid x"),
+            ("Cy",             self.Cy,             "Centroid y"),
+            ("Ix",             self.Ix,             "2nd moment about x (centroidal)"),
+            ("Iy",             self.Iy,             "2nd moment about y (centroidal)"),
+            ("Ixy",            self.Ixy,            "Product of inertia"),
+            ("I1",             self.I1,             "Major principal 2nd moment"),
+            ("I2",             self.I2,             "Minor principal 2nd moment"),
+            ("principal_angle (deg)", math.degrees(self.principal_angle) if self.principal_angle is not None else None, "Angle of major principal axis"),
+            ("rx",             self.rx,             "Radius of gyration x"),
+            ("ry",             self.ry,             "Radius of gyration y"),
+            ("Sx",             self.Sx,             "Elastic section modulus x"),
+            ("Sy",             self.Sy,             "Elastic section modulus y"),
+            ("Zpl_x",          self.Zpl_x,          "Plastic section modulus x"),
+            ("Zpl_y",          self.Zpl_y,          "Plastic section modulus y"),
+            ("shape_factor_x", self.shape_factor_x, "Zpl_x / Sx"),
+            ("shape_factor_y", self.shape_factor_y, "Zpl_y / Sy"),
+            ("J",              self.J,              "Torsion constant"),
+            ("Cw",             self.Cw,             "Warping constant"),
+            ("SCx",            self.SCx,            "Shear centre x"),
+            ("SCy",            self.SCy,            "Shear centre y"),
+        ]
+        lines = [f"Section: {self.name}", "-" * 55]
+        for label, val, desc in rows:
+            if val is not None:
+                lines.append(f"  {label:<25} = {val:>14.6g}   {desc}")
+        return "\n".join(lines)

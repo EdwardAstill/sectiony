@@ -139,5 +139,48 @@ class TestSectionProperties(unittest.TestCase):
         # Total A = 36
         self.assertAlmostEqual(sec.A, 36.0, places=5)
 
+class TestDerivedProperties(unittest.TestCase):
+    def setUp(self):
+        from sectiony.library import rhs
+        self.rhs = rhs(100.0, 200.0, 10.0, 0.0)
+
+    def test_shape_factor_x_rectangle(self):
+        from sectiony.library import solid_rect
+        sec = solid_rect(50.0, 100.0)
+        # For rectangle, shape factor = 1.5 (Zpl/S = (bh^2/4)/(bh^2/6) = 1.5)
+        self.assertAlmostEqual(sec.shape_factor_x, 1.5, delta=0.05)
+
+    def test_shape_factor_positive(self):
+        self.assertGreater(self.rhs.shape_factor_x, 1.0)
+        self.assertGreater(self.rhs.shape_factor_y, 1.0)
+
+    def test_principal_moments_symmetric(self):
+        # For a doubly-symmetric section (Ixy=0): I1=max(Ix,Iy), I2=min(Ix,Iy)
+        self.assertAlmostEqual(self.rhs.I1, max(self.rhs.Ix, self.rhs.Iy), places=3)
+        self.assertAlmostEqual(self.rhs.I2, min(self.rhs.Ix, self.rhs.Iy), places=3)
+
+    def test_principal_angle_symmetric_zero(self):
+        angle = self.rhs.principal_angle
+        self.assertAlmostEqual(abs(angle) % (math.pi / 2), 0.0, places=5)
+
+    def test_principal_moments_angle_section(self):
+        from sectiony.library import angle
+        sec = angle(80.0, 80.0, 8.0, r=0.0)
+        # I1 > I2, both positive, I1*I2 = Ix*Iy - Ixy^2
+        self.assertGreater(sec.I1, sec.I2)
+        self.assertGreater(sec.I2, 0.0)
+        self.assertAlmostEqual(
+            sec.I1 * sec.I2,
+            sec.Ix * sec.Iy - sec.Ixy**2,
+            delta=abs(sec.Ix * sec.Iy) * 0.001,
+        )
+
+    def test_str_contains_properties(self):
+        s = str(self.rhs)
+        self.assertIn("A", s)
+        self.assertIn("Ix", s)
+        self.assertIn("RHS", s)
+
+
 if __name__ == '__main__':
     unittest.main()
