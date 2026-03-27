@@ -207,5 +207,22 @@ class TestRotation(unittest.TestCase):
         self.assertAlmostEqual(rotated.Iy, sec.Iy, delta=sec.Iy * 0.001)
 
 
+class TestCombine(unittest.TestCase):
+    def test_add_areas(self):
+        from sectiony.library import rhs
+        a = rhs(50.0, 50.0, 5.0, 0.0)
+        b = rhs(50.0, 50.0, 5.0, 0.0)
+        combined = a + b
+        self.assertAlmostEqual(combined.A, 2 * a.A, places=3)
+
+    def test_add_name(self):
+        from sectiony.library import solid_rect
+        s1 = solid_rect(10.0, 10.0)
+        s2 = solid_rect(20.0, 20.0)
+        combined = s1 + s2
+        self.assertIn(s1.name, combined.name)
+        self.assertIn(s2.name, combined.name)
+
+
 if __name__ == '__main__':
     unittest.main()

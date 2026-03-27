@@ -113,6 +113,55 @@ class Section:
         deg = math.degrees(angle)
         return Section(name=f"{self.name} (rot {deg:.1f}°)", geometry=new_geom)
 
+    def __add__(self, other: 'Section') -> 'Section':
+        """
+        Combine two sections into one by merging their geometries and properties.
+        Useful for built-up sections. Properties are calculated as the sum of the components.
+        """
+        if self.geometry is None or other.geometry is None:
+            raise ValueError("Both sections must have geometry to combine.")
+
+        # Combine contours
+        combined_contours = self.geometry.contours + other.geometry.contours
+        new_geom = Geometry(contours=combined_contours)
+
+        # For built-up sections, calculate properties as the sum of components
+        # This treats overlapping sections additively rather than using boolean union
+        combined_A = self.A + other.A
+
+        # For composite sections, centroid is weighted average
+        if combined_A > 0:
+            combined_Cx = (self.A * self.Cx + other.A * other.Cx) / combined_A if self.Cx is not None and other.Cx is not None else None
+            combined_Cy = (self.A * self.Cy + other.A * other.Cy) / combined_A if self.Cy is not None and other.Cy is not None else None
+        else:
+            combined_Cx = None
+            combined_Cy = None
+
+        # For moments of inertia, use parallel axis theorem
+        # I_total = I_self + A_self * d_self^2 + I_other + A_other * d_other^2
+        def combine_inertia(I_self, A_self, c_self, I_other, A_other, c_other, combined_c):
+            if I_self is None or I_other is None or combined_c is None or c_self is None or c_other is None:
+                return None
+            d_self = c_self - combined_c
+            d_other = c_other - combined_c
+            return I_self + A_self * d_self**2 + I_other + A_other * d_other**2
+
+        combined_Ix = combine_inertia(self.Ix, self.A, self.Cy, other.Ix, other.A, other.Cy, combined_Cy)
+        combined_Iy = combine_inertia(self.Iy, self.A, self.Cx, other.Iy, other.A, other.Cx, combined_Cx)
+        combined_Ixy = combine_inertia(self.Ixy, self.A, self.Cy, other.Ixy, other.A, other.Cy, combined_Cy) if self.Ixy is not None and other.Ixy is not None else None
+
+        # Create new section with combined properties
+        return Section(
+            name=f"{self.name} + {other.name}",
+            geometry=new_geom,
+            A=combined_A,
+            Cx=combined_Cx,
+            Cy=combined_Cy,
+            Ix=combined_Ix,
+            Iy=combined_Iy,
+            Ixy=combined_Ixy,
+        )
+
     @property
     def shape_factor_x(self) -> Optional[float]:
         """Plastic/elastic modulus ratio about x-axis (shape factor)."""
