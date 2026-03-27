@@ -98,5 +98,20 @@ class TestPlotMarkers(unittest.TestCase):
         plt.close(fig)
 
 
+class TestPrincipalAxes(unittest.TestCase):
+    def test_principal_axes_adds_lines(self):
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from sectiony.library import angle
+
+        sec = angle(80.0, 80.0, 8.0, r=0.0)
+        fig, ax = plt.subplots()
+        sec.plot(ax=ax, show=False, show_principal_axes=True)
+        # Two lines should be added for principal axes
+        self.assertGreaterEqual(len(ax.lines), 2)
+        plt.close(fig)
+
+
 if __name__ == "__main__":
     unittest.main()

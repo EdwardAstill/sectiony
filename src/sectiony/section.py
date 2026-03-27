@@ -34,7 +34,8 @@ class Section:
     dimensions: Optional[Dict[str, float]] = field(default_factory=lambda: None)  # Original dimensions for library shapes
 
     def plot(self, ax=None, show: bool = True, rotate: bool = False,
-             show_centroid: bool = False, show_shear_center: bool = False):
+             show_centroid: bool = False, show_shear_center: bool = False,
+             show_principal_axes: bool = False):
         """Plot the section geometry.
 
         Args:
@@ -43,11 +44,13 @@ class Section:
             rotate: If True, rotate the plot so x becomes vertical and y points left.
             show_centroid: If True, plot a marker at the centroid.
             show_shear_center: If True, plot a marker at the shear centre.
+            show_principal_axes: If True, overlay the principal axes through the centroid.
         """
         from .plotter import plot_section
         return plot_section(self, ax=ax, show=show, rotate=rotate,
                             show_centroid=show_centroid,
-                            show_shear_center=show_shear_center)
+                            show_shear_center=show_shear_center,
+                            show_principal_axes=show_principal_axes)
 
     def calculate_stress(self, N: float = 0.0, Vx: float = 0.0, Vy: float = 0.0, Mx: float = 0.0, My: float = 0.0, Mz: float = 0.0):
         """

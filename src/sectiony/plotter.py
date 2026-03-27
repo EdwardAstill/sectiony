@@ -148,6 +148,7 @@ def plot_section(
     rotate: bool = False,
     show_centroid: bool = False,
     show_shear_center: bool = False,
+    show_principal_axes: bool = False,
 ) -> Optional[plt.Axes]:
     """
     Plot the cross-section geometry with native curve rendering.
@@ -276,6 +277,23 @@ def plot_section(
     if show_shear_center and section.SCx is not None and section.SCy is not None:
         scx, scy = transform_point(section.SCx, section.SCy)
         ax.scatter([scx], [scy], marker='x', s=100, color='blue', zorder=5, label='Shear Centre')
+
+    if show_principal_axes and section.principal_angle is not None:
+        alpha = section.principal_angle
+        cx, cy = section.Cx or 0.0, section.Cy or 0.0
+        if all_x and all_y:
+            span = max(max(all_x) - min(all_x), max(all_y) - min(all_y)) * 0.6
+        else:
+            span = 1.0
+        for theta, color, label in [
+            (alpha, 'green', 'Major axis (I\u2081)'),
+            (alpha + math.pi / 2, 'purple', 'Minor axis (I\u2082)'),
+        ]:
+            dx, dy = math.cos(theta) * span, math.sin(theta) * span
+            p1 = transform_point(cx - dx, cy - dy)
+            p2 = transform_point(cx + dx, cy + dy)
+            ax.plot([p1[0], p2[0]], [p1[1], p2[1]],
+                    color=color, linestyle='--', linewidth=1.0, label=label)
 
     if show:
         plt.show()
