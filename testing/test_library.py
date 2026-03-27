@@ -12,7 +12,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 try:
-    from sectiony.library import chs, rhs, i, u, solid_rect, solid_circle, shs
+    from sectiony.library import chs, rhs, i, u, solid_rect, solid_circle, shs, angle
 except ImportError:
     pass
 
@@ -180,6 +180,30 @@ class TestLibraryPrimitives(unittest.TestCase):
         expected_A = d**2 - (d - 2*t)**2
         self.assertAlmostEqual(sec.A, expected_A, places=5)
         self.assertAlmostEqual(sec.Ix, sec.Iy, places=5)  # Symmetric
+
+
+class TestAngle(unittest.TestCase):
+    def test_angle_area(self):
+        b, h, t = 80.0, 80.0, 8.0
+        sec = angle(b, h, t, r=0.0)
+        # Area = two legs minus overlapping corner square
+        expected_A = b * t + (h - t) * t
+        self.assertAlmostEqual(sec.A, expected_A, places=4)
+
+    def test_angle_asymmetric_centroid(self):
+        """Centroid is NOT at origin for an angle section."""
+        b, h, t = 80.0, 80.0, 8.0
+        sec = angle(b, h, t, r=0.0)
+        # For equal angle, Cx == Cy by symmetry
+        self.assertAlmostEqual(sec.Cx, sec.Cy, places=4)
+        # Centroid is offset from origin
+        self.assertNotAlmostEqual(sec.Cx, 0.0, places=1)
+
+    def test_angle_nonzero_ixy(self):
+        """Equal angle has non-zero Ixy (axes not principal)."""
+        b, h, t = 80.0, 80.0, 8.0
+        sec = angle(b, h, t, r=0.0)
+        self.assertNotAlmostEqual(sec.Ixy, 0.0, places=0)
 
 
 if __name__ == '__main__':
