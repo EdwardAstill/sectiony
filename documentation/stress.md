@@ -35,6 +35,8 @@ stress = Stress(
 | `tau_torsion(x, y)` | Shear stress due to torsion (approximate) |
 | `tau(x, y)` | Total shear stress magnitude |
 | `von_mises(x, y)` | Von Mises stress: $\sqrt{\sigma^2 + 3\tau^2}$ |
+| `sigma_1(x, y)` | Maximum principal stress: $\frac{\sigma}{2} + \sqrt{\left(\frac{\sigma}{2}\right)^2 + \tau^2}$. Always ≥ σ₂. |
+| `sigma_2(x, y)` | Minimum principal stress: $\frac{\sigma}{2} - \sqrt{\left(\frac{\sigma}{2}\right)^2 + \tau^2}$. Can be negative. |
 
 ### Analysis Methods
 
@@ -54,6 +56,8 @@ Supported `stress_type` values:
 - `"tau_shear"` - Transverse shear component
 - `"tau_torsion"` - Torsional shear component
 - `"von_mises"` - Von Mises equivalent stress
+- `"sigma_1"` - Maximum principal stress
+- `"sigma_2"` - Minimum principal stress
 
 ### Visualization
 
@@ -62,9 +66,14 @@ stress.plot(
     stress_type="von_mises",  # Type of stress to plot
     ax=None,                   # Optional matplotlib axes
     show=True,                 # Whether to display
-    cmap="viridis"             # Colormap
+    cmap="viridis",            # Colormap
+    show_neutral_axis=True     # Draw the neutral axis (where σ_bending = 0)
 )
 ```
+
+#### `show_neutral_axis`
+
+When `show_neutral_axis=True`, a white dashed line is drawn on the plot indicating where the bending normal stress equals zero. The line passes through the centroid. This option has no visible effect if no bending moments are applied.
 
 ## Usage Example
 

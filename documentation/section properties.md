@@ -35,6 +35,48 @@
 | **Zpl_x** | Plastic Modulus (x) | First moment of area about the plastic neutral axis (horizontal). Used for plastic moment capacity. |
 | **Zpl_y** | Plastic Modulus (y) | First moment of area about the plastic neutral axis (vertical). Used for plastic moment capacity. |
 
+## Shape Factors
+
+| Symbol | Property | Description |
+| :--- | :--- | :--- |
+| **shape_factor_x** | Shape Factor (x) | Ratio of plastic to elastic section modulus: $Z_{pl,x} / S_x$. Equal to 1.5 for a rectangle. Always > 1.0 for any solid section. |
+| **shape_factor_y** | Shape Factor (y) | Ratio of plastic to elastic section modulus: $Z_{pl,y} / S_y$. Equal to 1.5 for a rectangle. Always > 1.0 for any solid section. |
+
+## Principal Second Moments of Area
+
+| Symbol | Property | Description |
+| :--- | :--- | :--- |
+| **I1** | Major Principal Inertia | Maximum second moment of area: $\frac{I_x+I_y}{2} + \sqrt{\left(\frac{I_x-I_y}{2}\right)^2 + I_{xy}^2}$ |
+| **I2** | Minor Principal Inertia | Minimum second moment of area: $\frac{I_x+I_y}{2} - \sqrt{\left(\frac{I_x-I_y}{2}\right)^2 + I_{xy}^2}$ |
+| **principal_angle** | Principal Angle | Angle in radians from the x-axis to the I1 (major) axis: $\frac{1}{2} \arctan\!\left(\frac{-2I_{xy}}{I_x - I_y}\right)$. Zero for doubly-symmetric sections. |
+
+## Section Methods
+
+### `rotate(angle)`
+
+Returns a new `Section` with the geometry rotated counter-clockwise by `angle` radians. All properties are recalculated on the rotated geometry. For example, rotating by π/2 swaps `Ix` and `Iy`.
+
+```python
+import math
+rotated = section.rotate(math.pi / 2)
+```
+
+### `+` Operator (`__add__`)
+
+Merges the geometries of two sections into a single combined section. Properties are recalculated from the combined geometry. Useful for built-up sections.
+
+```python
+combined = sec_a + sec_b
+```
+
+### `print(sec)` / `str(sec)` (`__str__`)
+
+Prints a formatted table of all section properties.
+
+```python
+print(section)
+```
+
 ## Shear Center
 
 | Symbol | Property | Description |

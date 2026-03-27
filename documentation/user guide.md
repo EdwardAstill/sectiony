@@ -36,7 +36,7 @@ There are three main ways to create a section in **sectiony**:
 The easiest way to create common structural sections is using the built-in library functions. These automatically generate geometry and calculate all properties.
 
 ```python
-from sectiony.library import chs, rhs, i, u
+from sectiony.library import chs, rhs, i, u, solid_rect, solid_circle, shs, angle, t_section
 
 # Circular Hollow Section
 my_chs = chs(d=200.0, t=10.0)
@@ -49,6 +49,21 @@ my_beam = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=10.0)
 
 # U-Channel
 my_channel = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
+
+# Solid Rectangle
+my_solid_rect = solid_rect(b=100.0, h=200.0)
+
+# Solid Circle
+my_solid_circle = solid_circle(d=150.0)
+
+# Square Hollow Section
+my_shs = shs(d=100.0, t=6.0, r=10.0)
+
+# Angle (L-section)
+my_angle = angle(b=100.0, h=100.0, t=10.0, r=8.0)
+
+# T-Section
+my_t = t_section(b=150.0, d=200.0, tf=12.0, tw=8.0, r=10.0)
 ```
 
 All library functions return a `Section` object with automatically calculated properties. Additionally, library shapes retain their original dimensions in a `dimensions` attribute (dictionary), allowing you to easily retrieve the parameters used to create the section:
@@ -196,6 +211,39 @@ print(f"Shear Center: ({my_section.SCx}, {my_section.SCy})")
 
 For detailed explanations, see the [Section Properties](section properties.md) documentation.
 
+## 2.5 Section Operations
+
+### Rotating a Section
+
+`sec.rotate(angle_radians)` returns a new `Section` with the geometry rotated counter-clockwise by the given angle. All properties are recalculated.
+
+```python
+import math
+
+# Rotate 90 degrees counter-clockwise
+rotated = my_section.rotate(math.pi / 2)
+
+# Rotate 45 degrees
+rotated_45 = my_section.rotate(math.pi / 4)
+```
+
+### Combining Sections
+
+Use the `+` operator to merge two sections into a single built-up section. Properties are recalculated from the combined geometry.
+
+```python
+combined = sec_a + sec_b
+print(f"Combined area: {combined.A:.2f}")
+```
+
+### Viewing All Properties
+
+Use `print(sec)` or `str(sec)` to display a formatted table of all section properties at once.
+
+```python
+print(my_section)
+```
+
 ## 3. Visualizing the Section
 
 You can plot the cross-section geometry easily. The plot shows the exact curve definitions (including arcs) and automatically handles holes.
@@ -210,6 +258,13 @@ fig, ax = plt.subplots()
 my_section.plot(ax=ax, show=False)
 plt.savefig("section.svg")
 plt.close()
+
+# Plot with optional overlays
+my_section.plot(
+    show_centroid=True,        # Mark the centroid
+    show_shear_center=True,    # Mark the shear center
+    show_principal_axes=True   # Draw the principal axes
+)
 ```
 
 **Note:** Holes are automatically clipped to only show where they intersect with solid material, matching the property calculation behavior.

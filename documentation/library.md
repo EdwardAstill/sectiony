@@ -72,6 +72,100 @@ from sectiony.library import u
 section = u(b=100.0, h=200.0, tw=8.0, tf=10.0, r=5.0)
 ```
 
+## Solid Rectangle (solid_rect)
+`solid_rect(b, h)`
+
+*   **b**: Width (x-direction)
+*   **h**: Height (y-direction)
+
+Solid rectangular section centered at the origin. No hollow.
+
+**Example:**
+```python
+from sectiony.library import solid_rect
+
+# Solid rectangle 100mm wide, 200mm tall
+section = solid_rect(b=100.0, h=200.0)
+```
+
+## Solid Circle (solid_circle)
+`solid_circle(d)`
+
+*   **d**: Outer diameter
+
+Solid circular section centered at the origin.
+
+**Example:**
+```python
+from sectiony.library import solid_circle
+
+# Solid circle with 150mm diameter
+section = solid_circle(d=150.0)
+```
+
+## Square Hollow Section (shs)
+`shs(d, t, r=0.0)`
+
+*   **d**: Side length
+*   **t**: Wall thickness
+*   **r**: Outer corner radius (0 for sharp corners)
+
+Square Hollow Section (equal-sided RHS).
+
+**Example:**
+```python
+from sectiony.library import shs
+
+# SHS with rounded corners
+section = shs(d=100.0, t=6.0, r=10.0)
+
+# SHS with sharp corners
+section = shs(d=100.0, t=6.0)
+```
+
+## Angle (angle)
+`angle(b, h, t, r=0.0)`
+
+*   **b**: Horizontal leg width (x-direction)
+*   **h**: Vertical leg height (y-direction)
+*   **t**: Leg thickness
+*   **r**: Root fillet radius (0 for sharp corners)
+
+L-shaped section centered at the origin. **Note:** The centroid is NOT at the origin (asymmetric section). For equal legs, `Ixy ≠ 0`.
+
+**Example:**
+```python
+from sectiony.library import angle
+
+# Equal angle 100x100x10 with fillet
+section = angle(b=100.0, h=100.0, t=10.0, r=8.0)
+
+# Unequal angle, sharp corners
+section = angle(b=100.0, h=75.0, t=8.0)
+```
+
+## T-Section (t_section)
+`t_section(b, d, tf, tw, r=0.0)`
+
+*   **b**: Flange width
+*   **d**: Total depth
+*   **tf**: Flange thickness
+*   **tw**: Web thickness
+*   **r**: Fillet radius (0 for sharp corners)
+
+T-section with flange at top and web below, centered at the origin. Symmetric about the y-axis (`Cx=0`, `Ixy=0`), but centroid `Cy ≠ 0`.
+
+**Example:**
+```python
+from sectiony.library import t_section
+
+# T-section with fillets
+section = t_section(b=150.0, d=200.0, tf=12.0, tw=8.0, r=10.0)
+
+# T-section with sharp corners
+section = t_section(b=150.0, d=200.0, tf=12.0, tw=8.0)
+```
+
 ## Notes
 
 - All library functions return a `Section` object with automatically calculated properties
@@ -103,3 +197,8 @@ The `dimensions` dictionary contains:
 - **RHS**: `b` (width), `h` (height), `t` (thickness), `r` (corner radius)
 - **I Section**: `d` (depth), `b` (width), `tf` (flange thickness), `tw` (web thickness), `r` (root radius)
 - **U Section**: `b` (width), `h` (height), `tw` (web thickness), `tf` (flange thickness), `r` (corner radius)
+- **Solid Rect**: `b` (width), `h` (height)
+- **Solid Circle**: `d` (diameter)
+- **SHS**: `d` (side length), `t` (thickness), `r` (corner radius)
+- **Angle**: `b` (horizontal leg), `h` (vertical leg), `t` (thickness), `r` (fillet radius)
+- **T-Section**: `b` (flange width), `d` (total depth), `tf` (flange thickness), `tw` (web thickness), `r` (fillet radius)
