@@ -114,12 +114,9 @@ print(section.Zpl_x, section.Zpl_y)    # Plastic section moduli
 Convert continuous curves to discrete points:
 
 ```python
-# Standard discretization (respects curve structure)
-points_list = section.geometry.get_discretized_contours(resolution=32)
-
 # Uniform discretization (equal spacing along perimeter)
-uniform_points = section.discretize_uniform(count=100)
 # Returns: [(points, is_hollow), ...]
+uniform_points = section.discretize_uniform(count=100)
 ```
 
 See [Creating Geometries](creating geometries.md) for detailed discretization options.

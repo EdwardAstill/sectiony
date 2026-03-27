@@ -103,8 +103,8 @@ max_compression = stress.min("sigma")
 stress_at_corner = stress.at(10, 5, "von_mises")
 
 # 4. Visualize
-stress.plot("sigma")       # Normal stress distribution
-stress.plot("von_mises")   # Von Mises stress
+stress.plot(stress_type="sigma")       # Normal stress distribution
+stress.plot(stress_type="von_mises")   # Von Mises stress
 ```
 
 ## Notes

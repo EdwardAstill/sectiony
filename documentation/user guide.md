@@ -20,7 +20,7 @@ print(f"Max stress: {stress.max('sigma'):.2f}")
 
 # Visualize
 beam.plot()
-stress.plot("sigma")
+stress.plot(stress_type="sigma")
 ```
 
 ## 1. Defining a Section
@@ -335,10 +335,10 @@ Plot contour maps of the stress distribution.
 
 ```python
 # Plot Normal Stress (Sigma)
-stress.plot("sigma")
+stress.plot(stress_type="sigma")
 
 # Plot Von Mises Stress
-stress.plot("von_mises")
+stress.plot(stress_type="von_mises")
 
 # Plot with custom options
 stress.plot(
@@ -448,7 +448,7 @@ Here's a complete workflow example:
 
 ```python
 from sectiony.library import i
-from sectiony import Geometry, Contour, Line
+from sectiony import Section, Geometry, Contour, Line
 
 # Option 1: Use standard library
 beam = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=10.0)
@@ -476,8 +476,8 @@ print(f"Max compression: {stress.min('sigma'):.2f}")
 print(f"Max Von Mises: {stress.max('von_mises'):.2f}")
 
 # Visualize stress
-stress.plot("sigma")
-stress.plot("von_mises")
+stress.plot(stress_type="sigma")
+stress.plot(stress_type="von_mises")
 
 # Save for later
 beam.geometry.to_json("my_beam.json")

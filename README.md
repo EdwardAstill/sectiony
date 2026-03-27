@@ -50,6 +50,56 @@ Sectiony provides a library of common structural shapes that can be easily gener
 
 ---
 
+### Solid Rectangle (solid_rect)
+`sectiony.library.solid_rect(b, h)`
+
+**Parameters:**
+- `b` (float): Width (x-direction)
+- `h` (float): Height (y-direction)
+
+---
+
+### Solid Circle (solid_circle)
+`sectiony.library.solid_circle(d)`
+
+**Parameters:**
+- `d` (float): Outer diameter
+
+---
+
+### Square Hollow Section (shs)
+`sectiony.library.shs(d, t, r=0.0)`
+
+**Parameters:**
+- `d` (float): Side length
+- `t` (float): Wall thickness
+- `r` (float): Outer corner radius
+
+---
+
+### Angle (angle)
+`sectiony.library.angle(b, h, t, r=0.0)`
+
+**Parameters:**
+- `b` (float): Horizontal leg width (x-direction)
+- `h` (float): Vertical leg height (y-direction)
+- `t` (float): Leg thickness
+- `r` (float): Root fillet radius
+
+---
+
+### T-Section (t_section)
+`sectiony.library.t_section(b, d, tf, tw, r=0.0)`
+
+**Parameters:**
+- `b` (float): Flange width
+- `d` (float): Total depth
+- `tf` (float): Flange thickness
+- `tw` (float): Web thickness
+- `r` (float): Fillet radius
+
+---
+
 ## Features
 
 ### Geometry Visualization
@@ -90,6 +140,7 @@ stress_analysis.plot(stress_type="von_mises", cmap="inferno")
 # "sigma" (Normal), "tau" (Shear), "von_mises" (Combined)
 # "sigma_axial", "sigma_bending"
 # "tau_shear", "tau_torsion"
+# "sigma_1", "sigma_2" (Principal stresses)
 ```
 
 ### JSON Serialization
@@ -130,6 +181,9 @@ Sectiony automatically calculates a comprehensive set of properties for any geom
 | **rx**, **ry** | Radii of Gyration | Used for buckling analysis ($\sqrt{I/A}$). |
 | **SCx**, **SCy** | Shear Center | Point where transverse loads induce no torsion. |
 | **Cw** | Warping Constant | Resistance to warping. |
+| **I1**, **I2** | Principal Second Moments | Maximum and minimum bending stiffness about principal axes. |
+| **principal_angle** | Principal Axis Angle | Angle (radians) of the principal axes from the x-axis. |
+| **shape_factor_x**, **shape_factor_y** | Shape Factors | Plastic/elastic modulus ratio ($Z_{pl}/S$). |
 
 ### Accessing Properties
 

@@ -19,7 +19,7 @@ section = chs(d=200.0, t=10.0)
 ## Rectangular Hollow Section (rhs)
 `rhs(b, h, t, r)`
 
-*   **b**: Width (z-direction)
+*   **b**: Width (x-direction)
 *   **h**: Height (y-direction)
 *   **t**: Wall thickness
 *   **r**: Outer corner radius (0 for sharp corners)
@@ -39,7 +39,7 @@ section = rhs(b=100.0, h=200.0, t=10.0, r=0.0)
 `i(d, b, tf, tw, r)`
 
 *   **d**: Depth (Height, y-direction)
-*   **b**: Width (Base, z-direction)
+*   **b**: Width (Base, x-direction)
 *   **tf**: Flange thickness
 *   **tw**: Web thickness
 *   **r**: Root radius (fillet between web and flange, 0 for sharp corners)
@@ -58,7 +58,7 @@ section = i(d=300.0, b=150.0, tf=12.0, tw=8.0, r=0.0)
 ## U (Channel) Section (u)
 `u(b, h, tw, tf, r)`
 
-*   **b**: Width (z-direction)
+*   **b**: Width (x-direction)
 *   **h**: Height (y-direction)
 *   **tw**: Web thickness
 *   **tf**: Flange thickness
