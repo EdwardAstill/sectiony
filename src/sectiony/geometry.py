@@ -601,28 +601,65 @@ class Geometry:
 # Geometry Utils (Clipping)
 # -----------------------------------------------------------------------------
 
+def _point_in_polygon(point: Point, polygon: List[Point]) -> bool:
+    """Ray-casting test: returns True if point is inside polygon."""
+    x, y = point
+    n = len(polygon)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi + 1e-15) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _polygon_centroid(points: List[Point]) -> Point:
+    """Return the centroid of a polygon."""
+    n = len(points)
+    if n == 0:
+        return (0.0, 0.0)
+    cx = sum(p[0] for p in points) / n
+    cy = sum(p[1] for p in points) / n
+    return (cx, cy)
+
+
 def _reduce_hollows_impl(discretized: List[Tuple[List[Point], bool]]) -> List[Tuple[List[Point], bool]]:
     """
     Clip polygons to handle holes.
-    
+
+    Each hollow is clipped only against the single solid that contains its
+    centroid. This avoids double-counting when multiple solids are present
+    (e.g. two identical sections merged via Section.__add__).
+
     Args:
         discretized: List of (points, hollow) tuples
-        
+
     Returns:
-        List of (points, hollow) tuples with holes clipped to solids
+        List of (points, hollow) tuples with holes clipped to their solids
     """
     solids = [(pts, h) for pts, h in discretized if not h]
     hollows = [(pts, h) for pts, h in discretized if h]
-    
+
     if not hollows:
         return solids
-        
+
     reduced = list(solids)
     for h_pts, _ in hollows:
-        for s_pts, _ in solids:
-            clipped_points = _clip_polygon(h_pts, s_pts)
-            if len(clipped_points) >= 3 and abs(_polygon_area_signed(clipped_points)) > 1e-9:
-                reduced.append((clipped_points, True))
+        centroid = _polygon_centroid(h_pts)
+        # Find the first solid whose polygon contains this hollow's centroid
+        containing_solid = next(
+            (s_pts for s_pts, _ in solids if _point_in_polygon(centroid, s_pts)),
+            None
+        )
+        if containing_solid is None:
+            # Fallback: use the first solid (original behaviour for edge cases)
+            containing_solid = solids[0][0]
+        clipped_points = _clip_polygon(h_pts, containing_solid)
+        if len(clipped_points) >= 3 and abs(_polygon_area_signed(clipped_points)) > 1e-9:
+            reduced.append((clipped_points, True))
     return reduced
 
 
