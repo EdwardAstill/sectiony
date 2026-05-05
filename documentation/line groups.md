@@ -59,3 +59,16 @@ The stress evaluator distributes direct force over `weighted_area` and
 distributes `moment_z` elastically about the line-group centroid using `J`. It
 does not perform a resistance check, code check, fatigue check, or nonlinear
 instantaneous-center analysis.
+
+For a line group with weighted area `A`, centroid `(Cx, Cy)`, and polar line
+inertia `J`, the stress components are:
+
+```text
+tau_x = force_x / A - moment_z * (y - Cy) / J
+tau_y = force_y / A + moment_z * (x - Cx) / J
+tau_resultant = sqrt(tau_x^2 + tau_y^2)
+```
+
+When the line group represents welds, the element weight is usually the
+effective throat. Multiplying stress by the local weight recovers local line
+force.
