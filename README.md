@@ -102,6 +102,25 @@ Sectiony provides a library of common structural shapes that can be easily gener
 
 ## Features
 
+### Line Groups
+Sectiony can calculate properties for open weighted line groups. This is useful
+for general connection paths such as weld groups without making sectiony know
+about offshore standards or weld resistance checks.
+
+```python
+from sectiony import Line, LineElement, LineGroup
+
+group = LineGroup(
+    elements=(
+        LineElement(segment=Line((-1.0, -1.0), (-1.0, 1.0)), weight=0.01),
+        LineElement(segment=Line((1.0, -1.0), (1.0, 1.0)), weight=0.01),
+    )
+)
+
+stress = group.elastic_stress(force_x=400.0, moment_z=40.0)
+print(stress.at(1.0, 0.0).tau_resultant)
+```
+
 ### Geometry Visualization
 You can visualize the cross-section geometry, including accurate rendering of curved segments. Holes are automatically clipped to only show where they intersect with solid material.
 
@@ -195,5 +214,4 @@ print(f"Area: {beam.A:.2f}")
 print(f"Ix: {beam.Ix:.2f}")
 print(f"J: {beam.J:.2f}")
 ```
-
 

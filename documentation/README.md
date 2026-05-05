@@ -10,5 +10,5 @@ Welcome to the documentation for **sectiony**.
 *   [**Import and Export**](import_export.md): Saving to JSON and importing from DXF (CAD).
 *   [**Section Properties**](section properties.md): Details on the geometric properties calculated by the library.
 *   [**Stress Analysis**](stress.md): Calculating and visualizing stresses.
+*   [**Line Groups**](line groups.md): Open-line geometry properties and elastic line-group stresses.
 *   [**Units and Coordinates**](units and coordinates.md): Understanding the coordinate system and units.
-
